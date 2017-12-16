@@ -1,0 +1,85 @@
+# code coverage
+coverage
+lib-cov
+test-results.xml
+clover.xml
+
+# editor and that .tmp file
+.idea
+.tmp
+
+# Node logs
+npm-debug.log*
+logs
+*.log
+pids
+*.pid
+*.seed
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (http://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules
+jspm_packages
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Yeoman/bow/&c.
+bower_components/
+build/
+dist/
+
+# Linux ignores
+*~
+.fuse_hidden
+.directory
+.Trash-*
+
+## JetBrains file-based project format:
+*.iws
+
+# JetBrains Rider
+*.sln.iml
+
+# SASS
+.sass-cache/
+*.css.map
+
+### OSX ###
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows shortcuts
+*.lnk
+
+# Misc. detritus
+.svn/
+/.tgitconfig
+.vscode
+
+
