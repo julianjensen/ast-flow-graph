@@ -72,7 +72,7 @@
             2,
             {
                 "before": true,
-                "after": true
+                "after": false
             }
         ],
         "handle-callback-err": [
@@ -295,7 +295,7 @@
         ],
         "yield-star-spacing": [
             2,
-            "both"
+            "before"
         ],
         "yoda": [
             2,
