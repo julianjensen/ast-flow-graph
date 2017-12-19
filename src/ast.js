@@ -14,8 +14,9 @@ const
         Syntax,
         createsScope,
         loopNode
-    }    = require( './defines' ),
-    { Scopes, Scope } = require( './scopes' ),
+    }                  = require( './defines' ),
+    escope             = require( 'escope' ),
+    { Scopes }         = require( './scopes' ),
     { traverse }       = require( 'estraverse' ),
     { parseModule }    = require( 'esprima' ),
     { isArray: array } = Array,
@@ -38,17 +39,20 @@ class AST
     {
         this.ast = parseModule( source, { loc: true, range: true } );
 
-        let index = 0,
+        this.escope = escope.analyze( this.ast, { ecmaVersion: 6, sourceType: isModule ? 'module' : 'script', directive: true } );
+        this.associate = new Map();
+
+        let index    = 0,
             topScope = {
-                type: isModule ? 'module' : 'script',
-                ast: this.ast,
-                first: 0,
-                last: 0,
-                outer: null,
-                inner: [],
+                type:   isModule ? 'module' : 'script',
+                ast:    this.ast,
+                first:  0,
+                last:   0,
+                outer:  null,
+                inner:  [],
                 labels: []
             },
-            scope = topScope;
+            scope    = topScope;
 
         this.ast.scope = topScope;
 
@@ -61,12 +65,12 @@ class AST
             if ( node.type !== Syntax.Program && createsScope.has( node.type ) )
             {
                 node.scope = {
-                    type: Scopes.get_type( node.type ),
-                    ast: node,
-                    first: index - 1,
-                    last: index - 1,
-                    outer: scope,
-                    inner: [],
+                    type:   Scopes.get_type( node.type ),
+                    ast:    node,
+                    first:  index - 1,
+                    last:   index - 1,
+                    outer:  scope,
+                    inner:  [],
                     labels: []
                 };
 
@@ -82,6 +86,12 @@ class AST
                 if ( scope.labels.includes( node.label ) )
                     throw new SyntaxError( `Duplicate label definition of "${node.label}"` );
                 scope.labels.push( node.label );
+
+                let escope = this.escope.acquire( node ),
+                    assoc = this.associate.get( escope );
+
+                if ( !assoc ) this.associate.set( escope, assoc = { labels: [] } );
+                assoc.labels.push( { label: node.label, node } );
             }
 
         }, node => {
@@ -113,6 +123,31 @@ class AST
         this.scope.inner.forEach( _make_scope );
 
         return scopes;
+    }
+
+    /**
+     * @param {Node} start
+     * @param {string} label
+     * @return {?CFGBlock}
+     */
+    find_label( start, label )
+    {
+        let scope = this.escope.acquire( start );
+
+        while ( scope )
+        {
+            const assoc = this.associate.get( scope );
+
+            if ( assoc && assoc.labels )
+            {
+                const la = assoc.labels.find( la => la.label === label );
+                if ( la ) return la.node.cfg;
+            }
+
+            scope = scope.outer;
+        }
+
+        return null;
     }
 
     /**
@@ -162,15 +197,16 @@ class AST
          * @param {?Node} previous
          * @param {string} [field]
          * @param {number} [index]
+         * @param {?Node} next
          * @private
          */
-        function _walker( node, parent, previous, field, index )
+        function _walker( node, parent, previous, field, index, next )
         {
             if ( !node ) return;
 
             const
                 isa = Array.isArray( node ),
-                er = !isa ? enter( node, parent, previous, field, index ) : true;
+                er  = !isa ? enter( node, parent, previous, field, index ) : true;
 
             if ( er !== false )
             {
@@ -179,7 +215,7 @@ class AST
                     {
                         const arr = node[ key ];
 
-                        arr.forEach( ( n, i ) => _walker( arr[ i ], node, i ? arr[ i - 1 ] : null, key, i ) );
+                        arr.forEach( ( n, i ) => _walker( arr[ i ], node, i ? arr[ i - 1 ] : null, key, i, i === arr.length - 1 ? null : arr[ i + 1 ] ) );
                     }
                     else
                         _walker( node[ key ], node, null, key );

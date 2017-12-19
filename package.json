@@ -52,6 +52,7 @@
         "cli-table2": "^0.2.0",
         "common-tags": "^1.5.1",
         "dominators": "^1.0.6",
+        "escope": "^3.6.0",
         "esprima": "^4.0.0",
         "estraverse": "^4.2.0",
         "traversals": "^1.0.15"

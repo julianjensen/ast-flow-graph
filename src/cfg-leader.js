@@ -9,6 +9,7 @@
 
 const
     BasicBlock                                            = require( './basic-block' ),
+    BlockManager = require( './cfg/cfg-block' ),
     // _inspect                                     = require( 'util' ).inspect,
     // inspect                                      = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
     { cfgBlocks, causesUnreachable, Syntax, ignoreTypes } = require( './defines' ),
@@ -60,10 +61,10 @@ const
  * and can be merged into the current block. Multiple edges requires additional blocks.
  *
  * @param {AST} ast
- * @param {BasicBlockList} [bl]
+ * @param {BlockManager} bm
  * @param {Scopes} scopes
  */
-function cfg_leaders( ast, bl, scopes )
+function cfg_leaders( ast, bm, scopes )
 {
     const isBreakable = block => breakStack.length && breakStack[ breakStack.length - 1 ] === block;
 
@@ -76,11 +77,13 @@ function cfg_leaders( ast, bl, scopes )
     if ( bl ) bb = _newNode( bl );
 
     /**
-     * @paran {BaseNode|Node} n
-     * @paran {BaseNode|Node} p
-     * @param {?BasicBlock} prev
+     * @param {BaseNode|Node} n
+     * @param {BaseNode|Node} p
+     * @param {?CFGBlock} prev
+     * @param {?(BaseNode|Node)} [prevNode]
+     * @param {?(BaseNode|Node)} [nextNode]
      */
-    function leader( n, p, prev )
+    function leader( n, p, prev, prevNode, nextNode )
     {
         if ( !prev ) return false;  // Unreachable code
 
@@ -90,83 +93,122 @@ function cfg_leaders( ast, bl, scopes )
 
 
         const
-            sub     = ( _node, _prev ) => ast.walker( _node, ( __node, __p ) => leader( __node, __p, _prev ) ),
+            sub     = ( _node, _prev ) => _node ? ast.walker( _node, ( __node, __p, prev, f, i, next ) => leader( __node, __p, _prev, prev, next ) ) : null,
+
+            walk_block = ( block, nodes, i = 0 ) => {
+
+                while ( i < nodes.length )
+                {
+                    const n = nodes.body[ i ];
+
+                    if ( !cfgBlocks.has( n.type ) )
+                        block.add( n );
+                    else if ( !causesUnreachable.has( n.type ) )
+                        block = sub( n, block );
+                    else
+                        return null;
+                }
+
+                return block;
+            },
 
             entries = {
                 /** @param {BlockStatement} node */
                 [ Syntax.BlockStatement ]: node => {
 
-                    let i = 0;
+                    let block = bm.block().from( prev );
 
-                    while ( i < node.body.length )
-                    {
-                        const n = node.body[ i ];
-
-                        if ( !cfgBlocks.has( n.type ) )
-                            prev.add_node( n );
-                        else if ( !causesUnreachable.has( n.type ) )
-                            prev = sub( n, prev );
-                        else
-                            break;
-                    }
-
-                    return prev;
+                    return walk_block( block, node.body );
+                    //     i = 0;
+                    //
+                    // while ( i < node.body.length )
+                    // {
+                    //     const n = node.body[ i ];
+                    //
+                    //     if ( !cfgBlocks.has( n.type ) )
+                    //         block.add( n );
+                    //     else if ( !causesUnreachable.has( n.type ) )
+                    //         block = sub( n, block );
+                    //     else
+                    //         break;
+                    // }
+                    //
+                    // return block;
                 },
 
                 [ Syntax.BreakStatement ]: node => {
                     if ( node.label )
                     {
-                        prev.add_node( node );
+                        prev.add( node );
+
+                        const block = ast.find_label( node, node.label );
+
+                        if ( block )
+                        {
+                            block.from( prev );
+                            return null;
+                        }
 
                         if ( !state.deferred[ node.label ] ) state.deferred[ node.label ] = [];
-                        state.deferred[ node.label ].push( prev );
+                        state.deferred[ node.label ].push( { cfg: prev, node } );
                     }
                     else
                     {
                         if ( !breakStack.length )
                             throw new SyntaxError( `Statement 'break' is not inside a loop or switch statement` );
 
-                        breakStack[ breakStack.length - 1 ].add_pred( prev );
+                        breakStack[ breakStack.length - 1 ].from( prev );
 
                         return null;
                     }
                 },
-                [ Syntax.CatchClause ]:    node => {},
+                [ Syntax.CatchClause ]:    node => {
+                    return sub( node.body, bm.block().from( prev ) );
+                },
 
                 [ Syntax.ContinueStatement ]: node => {
                     if ( node.label )
                     {
-                        prev.add_node( node );
+                        prev.add( node );
+
+                        const block = ast.find_label( node, node.label );
+
+                        if ( block )
+                        {
+                            block.from( prev );
+                            return null;
+                        }
 
                         if ( !state.deferred[ node.label ] ) state.deferred[ node.label ] = [];
-                        state.deferred[ node.label ].push( prev );
+                        state.deferred[ node.label ].push( { cfg: prev, node } );
                     }
                     else
                     {
                         if ( !breakStack.length )
                             throw new SyntaxError( `Statement 'continue' is not inside a loop` );
 
-                        breakStack[ breakStack.length - 1 ].add_pred( prev );
+                        breakStack[ breakStack.length - 1 ].from( prev );
 
                         return null;
                     }
                 },
 
                 [ Syntax.DoWhileStatement ]: node => {
-                    const
-                        body = add_block( node.body, prev, 'loop' ),
-                        test = add_block( node.test, body, 'test' ),
-                        alt  = test.alternate();
+                    let
+                        bodyStart = bm.block().from( prev ),
+                        test = bm.block().as( BlockManager.TEST ),
+                        cont = bm.block();
 
-                    test.consequent( body );
-
-                    breakStack.push( alt );
-                    sub( node.body, prev );
+                    breakStack.push( cont );
+                    let bodyEnd = sub( node.body, bodyStart );
                     breakStack.pop();
 
-                    sub( node.test, body );
 
-                    return alt;
+                    test.from( bodyEnd ).whenTrue( bodyStart ).whenFalse( cont );
+
+                    sub( node.test, test );
+
+                    return cont;
                 },
 
                 /**
@@ -190,80 +232,149 @@ function cfg_leaders( ast, bl, scopes )
                  * @param {ForStatement} node
                  */
                 [ Syntax.ForStatement ]:     node => {
-                    let init = node.init && add_block( node.init, prev, 'init' ),
-                        initEnd = init && sub( node.init, init ),
 
-                        test = node.test && add_block( node.test, initEnd || prev, 'test' ),
-                        testEnd = test && sub( node.test, test );
+                    let init = bm.block().from( prev ),
+                        test = bm.block().from( init ).as( BlockManager.TEST ),
+                        body = bm.block(),
+                        update = bm.block(),
+                        cont = bm.block();
 
-                    let consequent,
-                        alternate;
+                    test.whenTrue( body ).whenFalse( cont );
+                    update.from( sub( node.body, body ) ).to( test );
 
-                    if ( test )
-                    {
-                        consequent = add_block( node.body, testEnd, 'consequent' );
-                        alternate = add_block( null, testEnd, 'alternate' );
-                    }
-                    else
-                    {
-                        consequent = sub( node.body, add_block( node.body, init || prev ) );
-                        alternate = add_block( null, consequent );
-                    }
-
-                    let update = node.update && add_block( node.update, consequent ),
-                        updateEnd = update && sub( node.update, update );
-
-                    if ( updateEnd )
-                        updateEnd.add_succ( test || consequent );
-                    else
-                        consequent.add_succ( test || consequent );
-
-                    return alternate;
+                    return cont;
                 },
 
                 /**
                  * @param {ForInStatement} node
                  */
                 [ Syntax.ForInStatement ]:   node => {
+                    let update = bm.block().from( prev ).add( node ),
+                        body = bm.block().from( update ),
+                        cont = bm.block().from( update );
 
+                    body = sub( node.body, body );
+                    if ( body ) body.to( update );
+
+                    return cont;
                 },
 
                 /**
                  * @param {ForOfStatement} node
                  */
                 [ Syntax.ForOfStatement ]:   node => {
-
+                    return self[ Syntax.ForInStatement ]( node );
                 },
 
                 /**
                  * @param {IfStatement} node
                  */
                 [ Syntax.IfStatement ]:      node => {
+                    let test = bm.block().as( BlockManager.TEST ).from( prev ),
+                        consequent = bm.block(),
+                        alternate = bm.block(),
+                        cont = bm.block();
 
+                    test.whenTrue( consequent ).whenFalse( alternate );
+
+                    return cont.from( sub( node.consequent, consequent ) ).from( sub( node.alternate, alternate ) );
                 },
 
                 /**
                  * @param {LabeledStatement} node
                  */
                 [ Syntax.LabeledStatement ]: node => {
-                    const p = add_block( node, prev );
-
-                    state.targets[ node.label ] = p;
-
-                    return sub( node.statement, p );
+                    return sub( node.statement, bm.block().from( prev ) );
                 },
 
                 /** @param {ReturnStatement} node */
                 [ Syntax.ReturnStatement ]: node => {
-                    prev.add_node( node );
+
+                    prev.add( node );
                     if ( node.argument ) sub( node.argument, prev );
-                    exit.add_preds( prev );
+                    exit.from( prev );
                 },
 
                 /**
+                 *
+                 * TEST -> true -> body -> break -> out
+                 *                      -> no break -> next body
+                 *
+                 *      -> false -> next test
+                 *
+                 * if last
+                 *
+                 * TEST -> true -> body -> break -> out
+                 *                      -> no break -> out
+                 *
+                 *      -> false -> default OR out
+                 *
+                 *
+                 *
+                 *             consequent
+                 * SWITCH           │
+                 *    │             v
+                 *    └──> TEST ──────────> BODY ──────────┐ break
+                 *           │                │            │
+                 *        alt│              no│break       │
+                 *           │              no│body        │
+                 *           │                │            │
+                 *           V                V            │
+                 *         TEST ───────────> BODY ─────────┤ break
+                 *           │                  │          │
+                 *        alt│                no│break     │
+                 *           │                no│body      │
+                 *           │                  │          │
+                 *           │                  V          │
+                 *           │  DEFAULT ─────> BODY ───────┤ break (or not)
+                 *           │                  │          │
+                 *           │                no│break     │
+                 *           │                no│body      │
+                 *           │                  │          │
+                 *           V                  V          │
+                 *         TEST ─────────────> BODY ───────┤ break (or not)
+                 *                                         │
+                 *                                         │
+                 * CONT <──────────────────────────────────┘
+                 *
                  * @param {SwitchStatement} node
                  */
                 [ Syntax.SwitchStatement ]: node => {
+
+                    let _switch = bm.block().from( prev ).add( node ),
+                        cont = bm.block(),
+                        alt = bm.block(),
+                        _default,
+                        cbs = node.cases.map( ( n, i ) => {
+
+                            let test = n.test && bm.block().as( BlockManager.TEST ).add( n.test ),
+                                body = bm.block();
+
+                            if ( !test )
+                                _default = { body };
+
+                            return { body, test };
+                        } );
+
+                    _switch.add( node.discriminant );
+
+                    let lastTest = cbs
+                        .filter( b => !!b.test )
+                        .reduce( ( prev, cb ) => {  // Go from test to test
+                            prev.test.whenFalse( cb.test );
+                            return cb;
+                        }, { test: _switch } );
+
+                    if ( lastTest.test && _default )
+                        lastTest.test.whenFalse( _default.body );
+
+                    breakStack.push( alt );
+
+                    cbs.reduce( ( prev, _case, i ) => {
+
+                    }, { test: _switch } );
+
+                    breakStack.pop();
                     const
                         _default   = node.cases.findIndex( c => !c.test ),
                         hasDefault = _default !== -1,
@@ -286,7 +397,7 @@ function cfg_leaders( ast, bl, scopes )
 
                     return out;
                 },
-                [ Syntax.SwitchCase ]:      ( node, _switch, next, done ) => {
+                [ Syntax.SwitchCase ]:      ( node, _switch, pn, nn ) => {
                     let test = add_block( node.test, _switch, 'test' ),
                         cons = add_block( node.consequent, test, 'consequent' );
 
@@ -357,18 +468,27 @@ function cfg_leaders( ast, bl, scopes )
                 }
             };
 
+        var self = entries;
+
         if ( entries[ n.type ] )
-            return entries[ n.type ]( n, p );
+            return entries[ n.type ]( n, p, prevNode, nextNode );
         else
             return entries.default( n );
     }
 
     let current = null;
 
-    ast.walker( ( n, p ) => {
-        current = leader( n, p, current );
+    ast.walker( ( n, p, prev, f, i, next ) => {
+        current = leader( n, p, current, prev, next );
         return false;
     } );
 }
 
-module.exports = cfg_leaders;
+function create_new_cfg( ast )
+{
+    const bm = new BlockManager();
+    cfg_leaders( ast, bm, ast.scopes );
+    return bm;
+}
+
+module.exports = create_new_cfg;
