@@ -8,8 +8,9 @@
 "use strict";
 
 const
+    list                                                  = require( './utils/link-list' ),
     BasicBlock                                            = require( './basic-block' ),
-    BlockManager = require( './cfg/cfg-block' ),
+    BlockManager                                          = require( './cfg/cfg-block' ),
     // _inspect                                     = require( 'util' ).inspect,
     // inspect                                      = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
     { cfgBlocks, causesUnreachable, Syntax, ignoreTypes } = require( './defines' ),
@@ -93,7 +94,7 @@ function cfg_leaders( ast, bm, scopes )
 
 
         const
-            sub     = ( _node, _prev ) => _node ? ast.walker( _node, ( __node, __p, prev, f, i, next ) => leader( __node, __p, _prev, prev, next ) ) : null,
+            sub        = ( _node, _prev ) => _node ? ast.walker( _node, ( __node, __p, prev, f, i, next ) => leader( __node, __p, _prev, prev, next ) ) : null,
 
             walk_block = ( block, nodes, i = 0 ) => {
 
@@ -112,7 +113,7 @@ function cfg_leaders( ast, bm, scopes )
                 return block;
             },
 
-            entries = {
+            entries    = {
                 /** @param {BlockStatement} node */
                 [ Syntax.BlockStatement ]: node => {
 
@@ -196,8 +197,8 @@ function cfg_leaders( ast, bm, scopes )
                 [ Syntax.DoWhileStatement ]: node => {
                     let
                         bodyStart = bm.block().from( prev ),
-                        test = bm.block().as( BlockManager.TEST ),
-                        cont = bm.block();
+                        test      = bm.block().as( BlockManager.TEST ),
+                        cont      = bm.block();
 
                     breakStack.push( cont );
                     let bodyEnd = sub( node.body, bodyStart );
@@ -231,13 +232,13 @@ function cfg_leaders( ast, bm, scopes )
                  *
                  * @param {ForStatement} node
                  */
-                [ Syntax.ForStatement ]:     node => {
+                [ Syntax.ForStatement ]: node => {
 
-                    let init = bm.block().from( prev ),
-                        test = bm.block().from( init ).as( BlockManager.TEST ),
-                        body = bm.block(),
+                    let init   = bm.block().from( prev ),
+                        test   = bm.block().from( init ).as( BlockManager.TEST ),
+                        body   = bm.block(),
                         update = bm.block(),
-                        cont = bm.block();
+                        cont   = bm.block();
 
                     test.whenTrue( body ).whenFalse( cont );
                     update.from( sub( node.body, body ) ).to( test );
@@ -248,10 +249,10 @@ function cfg_leaders( ast, bm, scopes )
                 /**
                  * @param {ForInStatement} node
                  */
-                [ Syntax.ForInStatement ]:   node => {
+                [ Syntax.ForInStatement ]: node => {
                     let update = bm.block().from( prev ).add( node ),
-                        body = bm.block().from( update ),
-                        cont = bm.block().from( update );
+                        body   = bm.block().from( update ),
+                        cont   = bm.block().from( update );
 
                     body = sub( node.body, body );
                     if ( body ) body.to( update );
@@ -262,18 +263,18 @@ function cfg_leaders( ast, bm, scopes )
                 /**
                  * @param {ForOfStatement} node
                  */
-                [ Syntax.ForOfStatement ]:   node => {
+                [ Syntax.ForOfStatement ]: node => {
                     return self[ Syntax.ForInStatement ]( node );
                 },
 
                 /**
                  * @param {IfStatement} node
                  */
-                [ Syntax.IfStatement ]:      node => {
-                    let test = bm.block().as( BlockManager.TEST ).from( prev ),
+                [ Syntax.IfStatement ]: node => {
+                    let test       = bm.block().as( BlockManager.TEST ).from( prev ),
                         consequent = bm.block(),
-                        alternate = bm.block(),
-                        cont = bm.block();
+                        alternate  = bm.block(),
+                        cont       = bm.block();
 
                     test.whenTrue( consequent ).whenFalse( alternate );
 
@@ -294,6 +295,14 @@ function cfg_leaders( ast, bm, scopes )
                     if ( node.argument ) sub( node.argument, prev );
                     exit.from( prev );
                 },
+
+                /**
+                 * @typedef {object} CaseInfo
+                 * @property {?CFGBlock} [test]
+                 * @property {?CFGBlock} [body]
+                 * @property {?CFGBlock} [forwardBody]
+                 * @property {SwitchCase} switchCase
+                 */
 
                 /**
                  *
@@ -341,79 +350,97 @@ function cfg_leaders( ast, bm, scopes )
                  */
                 [ Syntax.SwitchStatement ]: node => {
 
-                    let _switch = bm.block().from( prev ).add( node ),
-                        cont = bm.block(),
-                        alt = bm.block(),
+                    let _switch      = bm.block().from( prev ).add( node ),
+                        cont         = bm.block(),
+                        alt          = bm.block(),
+                        /** @type {List<CaseInfo>} */
+                        caseList     = list(),
+                        /** @type {CaseInfo} */
                         _default,
-                        cbs = node.cases.map( ( n, i ) => {
+                        defaultIndex = -1;
 
-                            let test = n.test && bm.block().as( BlockManager.TEST ).add( n.test ),
-                                body = bm.block();
+                        node.cases.forEach( ( n, i ) => {
+
+                            let test     = n.test && bm.block().as( BlockManager.TEST ).add( n.test ),
+                                body     = n.consequent && n.consequent.length && bm.block(),
+                                /** @type {CaseInfo} */
+                                caseInfo = { body, test, switchCase: n };
 
                             if ( !test )
-                                _default = { body };
-
-                            return { body, test };
+                            {
+                                _default     = caseInfo;
+                                defaultIndex = i;
+                            }
+                            else
+                                caseList.add( caseInfo );
                         } );
 
                     _switch.add( node.discriminant );
 
-                    let lastTest = cbs
-                        .filter( b => !!b.test )
-                        .reduce( ( prev, cb ) => {  // Go from test to test
-                            prev.test.whenFalse( cb.test );
-                            return cb;
-                        }, { test: _switch } );
+                    let dup = caseList.tail,
+                        lastBody = cont,
+                        i = _default && _default.body ? caseList.size - 1 : -1;
 
-                    if ( lastTest.test && _default )
-                        lastTest.test.whenFalse( _default.body );
-
-                    breakStack.push( alt );
-
-                    cbs.reduce( ( prev, _case, i ) => {
-
-                    }, { test: _switch } );
-
-                    breakStack.pop();
-                    const
-                        _default   = node.cases.findIndex( c => !c.test ),
-                        hasDefault = _default !== -1,
-
-                        test       = add_block( node.discriminant, prev ),
-                        cases      = node.cases.map( nc => add_block( nc, test ) ),
-                        alt        = hasDefault && add_block( _default );
-
-                    let out;
-
-                    if ( alt )
-                        out = add_block( null, alt );
-                    else
-                        out = add_block( null, test, 'alternate' );
-
-
-                    breakStack.push( out );
-                    node.cases.forEach( ( _case, i ) => entries[ Syntax.SwitchCase ]( _case, test, cases[ i ], out ) );
-                    breakStack.pop();
-
-                    return out;
-                },
-                [ Syntax.SwitchCase ]:      ( node, _switch, pn, nn ) => {
-                    let test = add_block( node.test, _switch, 'test' ),
-                        cons = add_block( node.consequent, test, 'consequent' );
-
-                    if ( node.consequent.length )
+                    while ( dup )
                     {
-                        if ( node.consequent[ node.consequent.length - 1 ].type === Syntax.BreakStatement )
-                            sub( node.consequent, cons );
-                        else
+                        if ( i === defaultIndex )
                         {
-                            cons = sub( node.consequent, cons );
-                            cons.add_succ( next || done );
+                            lastBody = _default.body;
+                            i = -1;
+                            continue;
                         }
+
+                        if ( !dup.data.body )
+                            dup.data.forwardBody = lastBody;
+                        else
+                            lastBody = dup.data.body;
+
+                        --i;
+                        dup = dup.prev;
                     }
+
+
+                    breakStack.push( cont );
+
+                    if ( !caseList.size )
+                        _switch.to( cont );
                     else
-                        cons.add_succ( next || done );
+                    {
+                        _switch.to( caseList.head.test );
+
+                        caseList.forEach( ( cse, i, listNode ) => {
+                            let
+                                test = cse.test,
+                                body = cse.body;
+
+                            if ( listNode.next )
+                                test.whenFalse( listNode.next.data.test ).add( cse.switchCase.test );
+                            else if ( _default )
+                                test.whenFalse( _default.body ).add( cse.switchCase.test );
+                            else
+                                test.whenFalse( cont ).add( cse.switchCase.test );
+
+                            if ( !body )
+                                test.whenTrue( cse.forwardBody );
+                            else
+                            {
+                                test.whenTrue( body );
+
+                                body = walk_block( body, cse.switchCase.consequent );
+
+                                let nxt = listNode.next,
+                                    ncse = nxt && nxt.data;
+
+                                if ( body ) body.to( !nxt ? cont : ncse.body ? ncse.body : ncse.forwardBody );
+                            }
+                        } );
+                    }
+
+                    breakStack.pop();
+
+                    return cont;
                 },
+                [ Syntax.SwitchCase ]:      () => prev,
                 [ Syntax.ThrowStatement ]:  ( node, parent ) => {},
 
                 // /** @param {TryStatement} node */
@@ -433,9 +460,10 @@ function cfg_leaders( ast, bm, scopes )
                  * @param {WhileStatement} node
                  */
                 [ Syntax.WhileStatement ]: node => {
-                    let test = add_block( node.test, prev, 'test' ),
-                        body = add_block( node.body, test, 'consequent' ),
-                        alt  = add_block( null, test, 'alternate' );
+                    let
+                        body = bm.block(),
+                        alt = bm.block(),
+                        test = bm.block().as( BlockManager.TEST ).add( node.test ).whenFalse( alt ).whenTrue( body );
 
                     sub( node.test, test );
 
@@ -443,7 +471,7 @@ function cfg_leaders( ast, bm, scopes )
                     body = sub( node.body, body );
                     breakStack.pop();
 
-                    body.add_succ( test );
+                    body.to( test );
                     return alt;
                 },
 
@@ -451,16 +479,21 @@ function cfg_leaders( ast, bm, scopes )
                  * @param {ConditionalExpression} node
                  */
                 [ Syntax.ConditionalExpression ]: node => {
-                    let test = add_block( node.test, prev, 'test' ),
-                        cons = add_block( node.consequent, test, 'consequent' ),
-                        alt  = add_block( node.alternate, test, 'alternate' );
+                    let cons = bm.block().add( node.consequent ),
+                        alt  = bm.block(),
+                        test = bm.block().add( node.test ).as( BlockManager.TEST ).whenTrue( cons ).whenFalse( alt );
 
                     cons = sub( node.consequent, cons );
                     alt  = sub( node.alternate, alt );
 
                     if ( !cons && !alt ) return null;
 
-                    return bb( cons, alt );
+                    let cont = bm.block();
+
+                    if ( cons ) cont.from( cons );
+                    if ( alt ) cont.from( alt );
+
+                    return cont;
                 },
                 'default':                        node => {
                     run = false;
