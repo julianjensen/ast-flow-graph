@@ -7,11 +7,12 @@
 "use strict";
 
 const
-    _add = ( arr, n ) => {
+    digits = ( n, d = 2, pre = '', post = '' ) => `${pre}${n}`.padStart( d ) + post,
+    _add   = ( arr, n ) => {
         if ( !arr.includes( n ) ) arr.push( n );
         return n;
     },
-    edges = {
+    edges  = {
         edges: Object.create( null ),
         add( from, to, type )
         {
@@ -33,9 +34,31 @@ class BlockManager
     constructor()
     {
         BlockManager.blockId = 0;
-        this.blocks = [];
+        this.blocks          = [];
+        this.startNode       = this.block().as( BlockManager.START );
+        this.toExit          = [];
+        this.deferredLinks   = [];
     }
 
+    /**
+     * @param {CFGBlock} block
+     */
+    toExitNode( block )
+    {
+        this.toExit.push( block );
+    }
+
+    /** */
+    finish()
+    {
+        this.exitNode = this.block().as( BlockManager.EXIT );
+        this.toExit.forEach( b => b.to( this.exitNode ) );
+        this.size = BlockManager.blockId;
+    }
+
+    /**
+     * @returns {CFGBlock}
+     */
     block()
     {
         const block = new CFGBlock();
@@ -44,30 +67,42 @@ class BlockManager
 
         return block;
     }
+
+    toString()
+    {
+        return this.blocks.map( b => `${b}` ).join( '\n' );
+    }
 }
 
 BlockManager.blockId = 0;
 
-BlockManager.TEST = 'test';
-BlockManager.TRUE = 'true';
-BlockManager.FALSE = 'false';
-BlockManager.NORMAL = 'normal';
+BlockManager.TEST      = 'test';
+BlockManager.TRUE      = 'true';
+BlockManager.FALSE     = 'false';
+BlockManager.NORMAL    = 'normal';
 BlockManager.EXCEPTION = 'exception';
-BlockManager.BREAK = 'break';
-BlockManager.CONTINUE = 'continue';
+BlockManager.CATCH     = 'catch';
+BlockManager.BREAK     = 'break';
+BlockManager.CONTINUE  = 'continue';
+BlockManager.LOOP      = 'loop';
+BlockManager.THROW     = 'throw';
+BlockManager.START     = 'start';
+BlockManager.EXIT      = 'start';
 
 /** */
 class CFGBlock
 {
     constructor()
     {
-        this.id       = BlockManager.blockId++;
+        this.id = BlockManager.blockId++;
         /** @type {Array<Node>} */
-        this.nodes    = [];
+        this.nodes = [];
         /** @type {Array<CFGBlock>} */
-        this.preds    = [];
+        this.preds = [];
         /** @type {Array<CFGBlock>} */
-        this.succs    = [];
+        this.succs = [];
+
+        this.type = BlockManager.NORMAL;
 
         /** @type {CFGBlock} */
         this.jumpTrue = null;
@@ -164,7 +199,7 @@ class CFGBlock
 
         this.to( block, BlockManager.TRUE );
         this.jumpTrue = block;
-        this.type = BlockManager.TEST;
+        this.type     = BlockManager.TEST;
         return this;
     }
 
@@ -178,7 +213,7 @@ class CFGBlock
 
         this.to( block, BlockManager.FALSE );
         this.jumpFalse = block;
-        this.type = BlockManager.TEST;
+        this.type      = BlockManager.TEST;
         return this;
     }
 
@@ -190,14 +225,17 @@ class CFGBlock
     {
         switch ( asWhat )
         {
-            case BlockManager.TRUE:     return this.jumpTrue;
-            case BlockManager.FALSE:    return this.jumpFalse;
-            default: return null;
+            case BlockManager.TRUE:
+                return this.jumpTrue;
+            case BlockManager.FALSE:
+                return this.jumpFalse;
+            default:
+                return null;
         }
     }
 
     /**
-     * @param {Node} node
+     * @param {AnnotatedNode} node
      * @return {CFGBlock}
      */
     add( node )
@@ -206,6 +244,15 @@ class CFGBlock
         this.nodes.push( node );
 
         return this;
+    }
+
+    /**
+     * @param {string} typeName
+     * @returns {boolean}
+     */
+    isa( typeName )
+    {
+        return this.type === typeName;
     }
 
     /**
@@ -225,7 +272,7 @@ class CFGBlock
     {
         const
             /** @type {Array<CFGBlock>} */
-            nodes = usePreds ? this.preds : this.succs,
+            nodes     = usePreds ? this.preds : this.succs,
             /** @type {number} */
             replIndex = nodes.findIndex( cb => cb === prevCb );
 
@@ -244,6 +291,29 @@ class CFGBlock
 
         this.preds.forEach( pcb => pcb.replace_edge_target( false, this, this.succs ) );
         this.succs.forEach( scb => scb.replace_edge_target( true, this, this.preds ) );
+    }
+
+    /*****************************************************************************************************************
+     *
+     * PRINT
+     *
+     *****************************************************************************************************************/
+
+    str_edges( e, f, x )
+    {
+        let out = e.map( c => digits( c.id, 3 ) ).join( '' );
+
+        return ( out && f ? f : '    ' ) + out.padStart( 15 ) + ( out && x ? x : '    ' );
+    }
+
+    toString()
+    {
+        const
+            st = this.type === BlockManager.START ? '>' : '',
+            ex = this.type === BlockManager.EXIT ? '>' : ' ',
+            nodes = this.nodes.map( n => n.type ).join( ', ' );
+
+        return this.str_edges( this.preds, '', ' <- ' ) + digits( this.id, 3, st, ex ) + this.str_edges( this.succs, ' -> ', '' ) + ' [' + this.type + '] => ' + nodes;
     }
 }
 

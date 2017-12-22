@@ -34,6 +34,8 @@
     },
     "homepage": "https://github.com/julianjensen/cfg#readme",
     "devDependencies": {
+        "@types/esprima": "^4.0.1",
+        "@types/estree": "^0.0.38",
         "chai": "^4.1.1",
         "chalk": "^2.3.0",
         "coveralls": "^2.13.1",
@@ -55,6 +57,7 @@
         "escope": "^3.6.0",
         "esprima": "^4.0.0",
         "estraverse": "^4.2.0",
-        "traversals": "^1.0.15"
+        "traversals": "^1.0.15",
+        "yallist": "^3.0.2"
     }
 }

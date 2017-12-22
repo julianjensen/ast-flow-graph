@@ -18,6 +18,8 @@ const
  */
 function flatten( arr, result = [], deep = true )
 {
+    if ( !Array.isArray( arr ) ) return [ arr ];
+
     const
         length = arr && arr.length;
 
@@ -43,11 +45,12 @@ function flatten( arr, result = [], deep = true )
     return result;
 }
 
-function from_assignment_pattern( ap )
+/**
+ * @param {AssignmentPattern|Identifier|ObjectPattern|ArrayPattern|RestElement|MemberExpression} ap
+ * @returns {string|string[]}
+ */
+function from_assignment_pattern( node )
 {
-    const
-        node = ap.left;
-
     switch ( node.type )
     {
         case Syntax.Identifier:
@@ -57,13 +60,13 @@ function from_assignment_pattern( ap )
             return node.properties.map( assignProp => from_assignment_pattern( assignProp.value ) );
 
         case Syntax.ArrayPattern:
-            return node.elements.map( from_assignment_pattern );
+            return node.elements.map( n => from_assignment_pattern( n ) );
 
         case Syntax.RestElement:
             return from_assignment_pattern( node.argument );
 
         case Syntax.AssignmentPattern:
-            return from_assignment_pattern( node );
+            return from_assignment_pattern( node.left );
 
         case Syntax.MemberExpression:
             return !node.computed && ( node.type === Syntax.ThisExpression || node.type === Syntax.Super ) && node.property.type === Syntax.Identifier ? node.property.name : null;
@@ -71,9 +74,31 @@ function from_assignment_pattern( ap )
 
 }
 
+/**
+ * @param {AnnotatedNode|Pattern} node
+ * @returns {Array<string>}
+ */
 function assignment( node )
 {
-    return flatten( from_assignment_pattern( node ) );
+    const
+        lister = vars => flatten( from_assignment_pattern( vars ) ).filter( x => !!x ),
+        out    = a => !a.length ? '[]' : `[ "${a.join( '", "' )}" ]`;
+
+    switch ( node.type )
+    {
+        case Syntax.VariableDeclarator:
+            // console.log( `${node}, vars: ${out( lister( node.id ) )}` );
+            break;
+        case Syntax.AssignmentPattern:
+        case Syntax.AssignmentExpression:
+            // console.log( `left: ${node.left.type}, ${node}, vars: ${out( lister( node.left ) )}` );
+            break;
+        case Syntax.UpdateExpression:
+        case Syntax.UnaryExpression:
+            // console.log( `${node}, vars: ${out( lister( node.argument ) )}` );
+            break;
+    }
+    // return flatten( from_assignment_pattern( node ) );
 }
 
 /**
@@ -83,15 +108,30 @@ function assignment( node )
 function get_start_nodes( top )
 {
     if ( top.type === Syntax.Program )
-        return { type: 'program', start: top.body };
+        return {
+            type:  'program',
+            start: top.body
+        };
     else if ( top.type === Syntax.FunctionDeclaration )
-        return { type: 'declaration', start: top.body };
+        return {
+            type:  'declaration',
+            start: top.body
+        };
     else if ( top.type === Syntax.FunctionExpression )
-        return { type: 'expression', start: top.body };
+        return {
+            type:  'expression',
+            start: top.body
+        };
     else if ( top.type === Syntax.MethodDefinition )
-        return { type: 'method', start: top.value.body };
+        return {
+            type:  'method',
+            start: top.value.body
+        };
     else if ( top.type === Syntax.ArrowFunctionExpression )
-        return { type: 'arrow', start: top.body };
+        return {
+            type:  'arrow',
+            start: top.body
+        };
     else
         throw new Error( `Don't know how to start: ${top.type}` );
 }
@@ -99,10 +139,22 @@ function get_start_nodes( top )
 /**
  * @param {FunctionDeclaration|FunctionExpression|MethodDefinition|ArrowFunctionExpression|Property|Node} node
  * @param {string} [whatToGet='all']
- * @return {Array<Node>|string|{name:string,node:Array<Node>,body:Array<Node>}}
+ * @return {Array<Node>|string|CFGInfo}
  */
 function get_from_function( node, whatToGet = 'all' )
 {
+    if ( node.type === Syntax.Program )
+    {
+        const pg = {
+            name:   'main module',
+            params: [],
+            body:   grab_body( node ),
+            lines:  [ node.loc.start.line, node.loc.end.line ]
+        };
+
+        return whatToGet && whatToGet !== 'all' ? pg[ whatToGet ] : pg;
+    }
+
     const
         hopeForName = n => {
             if ( n.type === Syntax.Identifier )
@@ -129,11 +181,13 @@ function get_from_function( node, whatToGet = 'all' )
                 }
             }
             else if ( n.id )
-                return hopeForName( n.id )
-            else if ( n.parent.type === Syntax.Property )
+                return hopeForName( n.id );
+            else if ( n.parent.type === Syntax.Property || n.parent.type === Syntax.MethodDefinition )
                 return hopeForName( n.parent.key );
+            else if ( n.parent.type === Syntax.VariableDeclarator )
+                return hopeForName( n.parent.id );
 
-            return null;
+            return 'anonymous';
         };
 
     if ( node.type === Syntax.Property || node.type === Syntax.MethodDefinition )
@@ -141,13 +195,55 @@ function get_from_function( node, whatToGet = 'all' )
     else if ( !checks.isBaseFunction( node ) )
         throw new SyntaxError( `No function found near ${node.type}, unable to find ${whatToGet}` );
 
-    return whatToGet === 'name'
-        ? hopeForName( node )
-        : whatToGet === 'params'
-               ? node.params
-               : whatToGet === 'body'
-              ? node.body
-              : { name: hopeForName( node ), params: node.params, body: node.body };
+    return grab_info();
+
+    /**
+     * @param {AnnotatedNode|BaseFunction|MethodDefinition|Program} node
+     * @returns {?(AnnotatedNode|Array<AnnotatedNode>)}
+     */
+    function grab_body( node )
+    {
+        switch ( node.type )
+        {
+            case Syntax.Program:
+            case Syntax.FunctionDeclaration:
+            case Syntax.FunctionExpression:
+            case Syntax.ArrowFunctionExpression:
+                return node.body.type === Syntax.BlockStatement ? node.body.body : node.body;
+
+            case Syntax.MethodDefinition:
+                return grab_body( node.value );
+        }
+    }
+
+    /**
+     * @returns {*}
+     */
+    function grab_info()
+    {
+        switch ( whatToGet )
+        {
+            case 'name':
+                return hopeForName( node );
+
+            case 'params':
+                return node.params;
+
+            case 'body':
+                return grab_body( node );
+
+            case 'lines':
+                return [ node.loc.start.line, node.loc.end.line ];
+
+            default:
+                return {
+                    name:   hopeForName( node ),
+                    params: node.params,
+                    body:   node.body.type === Syntax.BlockStatement ? node.body.body : node.body,
+                    lines:  [ node.loc.start.line, node.loc.end.line ]
+                };
+        }
+    }
 }
 
 module.exports = {

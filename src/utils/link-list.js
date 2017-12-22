@@ -147,9 +147,25 @@ function list()
 
     /**
      * @class List<T>
+     * @template T
      */
     class List
     {
+        /**
+         * @type {Iterable<T>}
+         * @template T
+         */
+        *[Symbol.iterator]()
+        {
+            let p = get_head();
+
+            while ( p )
+            {
+                yield p.data;
+                p = p.next;
+            }
+        }
+
         /**
          * @type {?T}
          */
@@ -199,11 +215,13 @@ function list()
 
             n.data = node;
             n.next = null;
-            n.prev = n.tail;
+            n.prev = get_tail();
 
-            if ( n.tail && n.tail.prev ) n.tail.prev.next = n;
+            if ( n.prev )
+                n.prev.next = n;
+            else
+                n.head = n;
 
-            if ( !n.prev ) n.head = n;
             ++size;
 
             return n.tail = n;

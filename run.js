@@ -32,7 +32,8 @@ function process_file( source )
         cfg = new CFG( source );
     // list = cfg.asList();
 
-    console.log( `scopes:\n${cfg.scopes}` );
+    console.log( `${cfg}` );
+    // console.log( `scopes:\n`, cfg.scopes );
     return;
 
     let hdr = `----------------------------------------------------------------------------------------------\nNEW FUNCTION: __FN__\n----------------------------------------------------------------------------------------------`;

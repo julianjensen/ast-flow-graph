@@ -391,6 +391,7 @@ const
         arrowFunctionExpressionName: null,
         functionName:                node => checks.functionDeclarationName( node ) || checks.methodName( node ) || checks.functionExpressionName( node ) || checks.arrowFunctionExpressionName( node ) || 'anonymous'
     },
+    /** @type {Set<string>} */
     cfgBlocks       = new Set( [
             Syntax.BlockStatement,
             Syntax.BreakStatement,
@@ -411,11 +412,13 @@ const
             Syntax.ConditionalExpression
         ]
     ),
+    /** @type {Set<string>} */
     causesUnreachable = new Set( [
         Syntax.ThrowStatement,
         Syntax.ContinueStatement,
         Syntax.BreakStatement
     ] ),
+    /** @type {Set<string>} */
     createsScope = new Set( [
         Syntax.FunctionExpression,
         Syntax.FunctionDeclaration,
@@ -431,6 +434,7 @@ const
         Syntax.BlockStatement,
         Syntax.Program
     ] ),
+    /** @type {Set<string>} */
     mayHaveName = new Set( [
         Syntax.FunctionExpression,
         Syntax.FunctionDeclaration,
@@ -439,6 +443,7 @@ const
         Syntax.ClassDeclaration,
         Syntax.VariableDeclarator
     ] ),
+    /** @type {Set<string>} */
     loopNode = new Set( [
         Syntax.ForInStatement,
         Syntax.ForOfStatement,

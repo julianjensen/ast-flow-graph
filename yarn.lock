@@ -2,6 +2,16 @@
 # yarn lockfile v1
 
 
+"@types/esprima@^4.0.1":
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/@types/esprima/-/esprima-4.0.1.tgz#40f6fb3a3a50ebcaa4dfca17f41e7f10e687df03"
+  dependencies:
+    "@types/estree" "*"
+
+"@types/estree@*", "@types/estree@^0.0.38":
+  version "0.0.38"
+  resolved "https://registry.yarnpkg.com/@types/estree/-/estree-0.0.38.tgz#c1be40aa933723c608820a99a373a16d215a1ca2"
+
 abbrev@1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.1.1.tgz#f8f2c887ad10bf67f634f005b6987fed3179aac8"
@@ -1997,6 +2007,10 @@ xtend@^4.0.0:
 yallist@^2.1.2:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/yallist/-/yallist-2.1.2.tgz#1c11f9218f076089a47dd512f93c6699a6a81d52"
+
+yallist@^3.0.2:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/yallist/-/yallist-3.0.2.tgz#8452b4bb7e83c7c188d8041c1a837c773d6d8bb9"
 
 yargs@~3.10.0:
   version "3.10.0"

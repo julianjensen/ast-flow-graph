@@ -11,11 +11,11 @@ const
     // inspect                                      = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
     AST = require( './ast' ),
     CFGBuilder = require( './cfg-builder' ),
+    create_new_cfg = require( './cfg-leader' ),
     { checks, Syntax } = require( './defines' ),
     all_methods        = cdecl => cdecl.body.body.map( node => node.type === Syntax.MethodDefinition && node ).filter( x => !!x ),
     BasicBlock         = require( './basic-block' ),
-    BasicBlockList     = require( './basic-block-list' ),
-    Scopes             = require( './scopes' );
+    BasicBlockList     = require( './basic-block-list' );
 
 /** */
 class CFG
@@ -27,7 +27,17 @@ class CFG
     {
         this.ast = new AST( source );
         this.cfgs = [];
-        this.scopes = this.ast.create_scopes();
+        this.scopes = this.ast.escope;
+        for ( const fnode of this.ast.forFunctions() )
+            this.cfgs.push( create_new_cfg( this.ast.set_root( fnode ) ) );
+
+        for ( const c of this.cfgs )
+            console.log( `Name: ${c.name}:${c.lines[ 0 ]}-${c.lines[ 1 ]}, size: ${c.bm.size}` );
+    }
+
+    toString()
+    {
+        return this.cfgs.map( b => `${b.name}:\n${b.bm}` ).join( '\n\n' );
     }
 
     /**
