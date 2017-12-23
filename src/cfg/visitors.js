@@ -18,16 +18,22 @@
  * @property {?CFGBlock} prev
  * @property {?CFGBlock} block
  * @property {function():CFGBlock} newBlock
+ * @property {CFGBlock[]} toExit
  * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):CFGBlock} [flatWalk]
  * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):*} [scanWalk]
  * @property {CFGBlock[]} breakTargets
- * @property {CFGBlock[]} loopTargets
+ * @property {function(CFGBlock):*} addBreakTarget
+ * @property {function(CFGBlock, CFGBlock):*} addLoopTarget
+ * @property {function():*} popTarget
+ * @property {function():?CFGBlock} getBreakTarget
+ * @property {function():?CFGBlock} getLoopTarget
  */
 
 
 /** */
 const
-    list = require( 'yallist' );
+    { CFGBlock } = require( './cfg-block' ),
+    list         = require( 'yallist' );
 
 module.exports = {
     BlockStatement,
@@ -44,6 +50,7 @@ module.exports = {
     SwitchStatement,
     SwitchCase,
     ThrowStatement,
+    TryStatement,
     WhileStatement,
     ConditionalExpression,
     syntax_default
@@ -56,42 +63,50 @@ module.exports = {
  */
 function BlockStatement( node, visitorHelper )
 {
-    return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ), node, visitorHelper );
+    return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ), node.body, visitorHelper );
+}
+
+function to_label( node, vh, type, targets )
+{
+    if ( node.label )
+    {
+        const
+            self  = vh.newBlock().from( vh.block ).add( node ).as( type ),
+            block = vh.ast.find_label( node, node.label );
+
+        if ( block )
+        {
+            if ( block instanceof CFGBlock )
+                block.from( self );
+            else
+                block.cfg = vh.newBlock().from( self ).as( vh.BlockManager.TEMPORARY );
+
+            return null;
+        }
+
+        throw new SyntaxError( `Labeled "${type}" statement has no label "${node.label} in scope: ${node}` );
+    }
+    else
+    {
+        const block = targets();
+
+        if ( !block )
+            throw new SyntaxError( `Statement '${type}' is not inside a breakable scope` );
+
+        block.from( vh.block );
+
+        return null;
+    }
 }
 
 /**
  * @param {BreakStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
- * @return {?CFGBlock}
+ * @return {?CFGBlock[]}
  */
 function BreakStatement( node, visitorHelper )
 {
-    if ( node.label )
-    {
-        visitorHelper.block.add( node ).as( visitorHelper.BlockManager.BREAK );
-
-        const block = visitorHelper.ast.find_label( node, node.label );
-
-        if ( block )
-        {
-            block.from( visitorHelper.block );
-            return null;
-        }
-
-        throw new SyntaxError( `Labeled "break" statement has no label "${node.label} in scope: ${node}` );
-
-    }
-    else
-    {
-        const bt = visitorHelper.breakTargets;
-
-        if ( !bt.length )
-            throw new SyntaxError( `Statement 'break' is not inside a loop or switch statement` );
-
-        bt[ bt.length - 1 ].from( visitorHelper.block );
-
-        return null;
-    }
+    return to_label( node, visitorHelper, visitorHelper.BlockManager.BREAK, visitorHelper.getBreakTarget );
 }
 
 /**
@@ -101,7 +116,7 @@ function BreakStatement( node, visitorHelper )
  */
 function CatchClause( node, visitorHelper )
 {
-    return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ), node, visitorHelper );
+    return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ).add( node ), node.body, visitorHelper );
 }
 
 /**
@@ -111,31 +126,7 @@ function CatchClause( node, visitorHelper )
  */
 function ContinueStatement( node, visitorHelper )
 {
-    if ( node.label )
-    {
-        visitorHelper.block.add( node ).as( visitorHelper.BlockManager.CONTINUE );
-
-        const block = visitorHelper.ast.find_label( node, node.label );
-
-        if ( block )
-        {
-            block.from( visitorHelper.block );
-            return null;
-        }
-
-        throw new SyntaxError( `Labeled "continue" statement has no label "${node.label} in scope: ${node}` );
-    }
-    else
-    {
-        let lt = visitorHelper.loopTargets;
-
-        if ( !lt.length )
-            throw new SyntaxError( `Statement 'continue' is not inside a loop` );
-
-        lt[ lt.length - 1 ].from( visitorHelper.block );
-
-        return null;
-    }
+    return to_label( node, visitorHelper, visitorHelper.BlockManager.LOOP, visitorHelper.getLoopTarget );
 }
 
 /**
@@ -145,33 +136,34 @@ function ContinueStatement( node, visitorHelper )
  */
 function DoWhileStatement( node, visitorHelper )
 {
+    const
+        { newBlock, block } = visitorHelper;
+
     let
-        body = visitorHelper.newBlock().from( visitorHelper.block ),
-        cont = visitorHelper.newBlock().as( visitorHelper.BlockManager.LOOP ),
-        test = visitorHelper.newBlock().as( visitorHelper.BlockManager.TEST ).whenTrue( body ).whenFalse( cont );
+        body = newBlock().from( block ),
+        cont = newBlock().as( visitorHelper.BlockManager.CONVERGE ),
+        test = newBlock().as( visitorHelper.BlockManager.TEST ).add( node.test ).whenTrue( body ).whenFalse( cont );
 
-    visitorHelper.breakTargets.push( cont );
-    visitorHelper.loopTargets.push( cont );
+    visitorHelper.addLoopTarget( test, cont );
     body = visitorHelper.flatWalk( body, node, visitorHelper );
-    visitorHelper.loopTargets.pop();
-    visitorHelper.breakTargets.pop();
-
+    visitorHelper.popTarget();
 
     test.from( body );
-
-    visitorHelper.scanWalk( test, node.test, visitorHelper );
 
     return cont;
 }
 
 /**
+ * The `ForStatement` works like shown in the following. Note that the init, test, and update
+ * may be absent, leaving only a body, in which case it is an infirnite loop, barring a `break`
+ * or `continue`.
  *
  * PREV ->
  *                 ┌───────────────┐
  *                 v               │
- *      INIT -> TEST -> BODY -> UPDATE
+ *      INIT -> TEST -> BODY -> UPDATE  <───── `ContinueStatement` target
  *                │
- *                └────> REST OF CODE PAST LOOP
+ *                └────> REST OF CODE PAST LOOP   <───── `BreakStatement` target
  *
  * [INIT]    ->    [TEST]
  *
@@ -188,19 +180,18 @@ function DoWhileStatement( node, visitorHelper )
  */
 function ForStatement( node, visitorHelper )
 {
+    const { newBlock, block } = visitorHelper;
 
-    let init   = visitorHelper.newBlock().from( visitorHelper.block ),
-        test   = visitorHelper.newBlock().from( init ).as( visitorHelper.BlockManager.TEST ),
-        body   = visitorHelper.newBlock(),
-        update = visitorHelper.newBlock(),
-        cont   = visitorHelper.newBlock().as( visitorHelper.BlockManager.LOOP );
+    let init   = newBlock().from( block ),
+        test   = newBlock().from( init ).as( visitorHelper.BlockManager.TEST ),
+        body   = newBlock(),
+        update = newBlock(),
+        cont   = newBlock().as( visitorHelper.BlockManager.CONVERGE );
 
     test.whenTrue( body ).whenFalse( cont );
+    visitorHelper.addLoopTarget( update, cont );
     update.from( visitorHelper.flatWalk( body, node.body, visitorHelper ) ).to( test );
-
-    visitorHelper.scanWalk( init, node.init, visitorHelper );
-    visitorHelper.scanWalk( test, node.test, visitorHelper );
-    visitorHelper.scanWalk( update, node.update, visitorHelper );
+    visitorHelper.popTarget();
 
     return cont;
 }
@@ -212,15 +203,17 @@ function ForStatement( node, visitorHelper )
  */
 function ForInStatement( node, visitorHelper )
 {
-    let update = visitorHelper.newBlock().from( visitorHelper.block ).add( node ),
-        body   = visitorHelper.newBlock().from( update ),
-        cont   = visitorHelper.newBlock().from( update ).as( visitorHelper.BlockManager.LOOP );
+    const { newBlock, block } = visitorHelper;
 
+    let update = newBlock().from( block ).add( node ),
+        body   = newBlock().from( update ),
+        cont   = newBlock().from( update ).as( visitorHelper.BlockManager.CONVERGE );
+
+    visitorHelper.addLoopTarget( update, cont );
     body = visitorHelper.flatWalk( body, node.body, visitorHelper );
-    if ( body ) body.to( update );
+    visitorHelper.popTarget();
 
-    visitorHelper.scanWalk( update, node.left, visitorHelper );
-    visitorHelper.scanWalk( update, node.right, visitorHelper );
+    if ( body ) body.to( update );
 
     return cont;
 }
@@ -236,31 +229,52 @@ function ForOfStatement( node, visitorHelper )
 }
 
 /**
+ *
+ *        │
+ *        │
+ *        V
+ *  ┌────────────┐     ┌─────────────┐
+ *  │    test    │ ──> │ (alternate) │
+ *  └────────────┘     └─────────────┘
+ *        │                   │
+ *        │                   │
+ *        V                   │
+ *  ┌────────────┐            │
+ *  │ consequent │            │
+ *  └────────────┘            │
+ *        │                   │
+ *        │                   │
+ *        V                   │
+ *  ┌────────────┐            │
+ *  │   block    │<───────────┘
+ *  └────────────┘
+ *
  * @param {IfStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
- * @return {?CFGBlock}
+ * @return {?CFGBlock[]}
  */
 function IfStatement( node, visitorHelper )
 {
-    let test       = visitorHelper.newBlock().as( visitorHelper.BlockManager.TEST ).from( visitorHelper.block ),
+    let test       = visitorHelper.newBlock()
+        .as( visitorHelper.BlockManager.TEST )
+        .from( visitorHelper.block )
+        .add( node.test ),
+
         consequent = visitorHelper.newBlock(),
-        alternate  = node.alternate && visitorHelper.newBlock(),
-        cont       = visitorHelper.newBlock();
+        alternate;
+        // cont       = visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE );
 
     test.whenTrue( consequent );
-    test.whenFalse( alternate || cont );
-
     consequent = visitorHelper.flatWalk( consequent, node.consequent, visitorHelper );
 
-    if ( consequent ) consequent.to( cont );
-
-    if ( alternate )
+    if ( node.alternate )
     {
+        alternate = visitorHelper.newBlock();
+        test.whenFalse( alternate );
         alternate = visitorHelper.flatWalk( alternate, node.alternate, visitorHelper );
-        cont.from( alternate );
     }
 
-    return cont;
+    return alternate ? [ consequent, alternate ] : [ consequent ];
 }
 
 /**
@@ -281,8 +295,9 @@ function LabeledStatement( node, visitorHelper )
 function ReturnStatement( node, visitorHelper )
 {
     visitorHelper.block.add( node );
-    if ( node.argument ) visitorHelper.scanWalk( visitorHelper.block, node.argument, visitorHelper );
-    visitorHelper.bm.toExitNode( visitorHelper.block );
+    visitorHelper.toExit.push( visitorHelper.block );
+
+    return null;
 }
 
 /**
@@ -294,6 +309,70 @@ function ReturnStatement( node, visitorHelper )
  */
 
 /**
+ * Originally, I treated the Switc/SwitchCase structure like shown in the
+ * first diagram but ended up changing it to something more leaborate but
+ * closer to how it would actually be treated by a compiler (sub-dividing
+ * test cases and so on).
+ *
+ *         ┌──────────────┐
+ *         │              │
+ *         │    switch    │
+ *         │              │
+ *         └──┬─┬─┬─┬─┬─┬─┘
+ *            │ │ │ │ │ │
+ *            │ │ │ │ │ │         ┌─────────────┐
+ *            │ │ │ │ │ │         │             │
+ *            │ │ │ │ │ └────────>│    case1    │
+ *            │ │ │ │ │           │             │
+ *            │ │ │ │ │           └─────────────┘
+ *            │ │ │ │ │
+ *            │ │ │ │ │           ┌─────────────┐
+ *            │ │ │ │ │           │             │
+ *            │ │ │ │ └──────────>│    case2    │
+ *            │ │ │ │             │             │
+ *            │ │ │ │             └─────────────┘
+ *            │ │ │ │
+ *            │ │ │ │             ┌─────────────┐
+ *            │ │ │ │             │             │ [ fall through succ. is next case ]
+ *            │ │ │ └────────────>│    case3    │
+ *            │ │ │               │             │
+ *            │ │ │               └──────┬──────┘
+ *            │ │ │                      │
+ *            │ │ │                Falls through
+ *            │ │ │                      │
+ *            │ │ │               ┌──────┴──────┐
+ *            │ │ │               │             │ [ previous falls through, preds are switch and previous case ]
+ *            │ │ └──────────────>│    case4    │
+ *            │ │                 │             │
+ *            │ │                 └─────────────┘
+ *            │ │
+ *            │ │                 ┌─────────────┐
+ *            │ │                 │             │
+ *            │ └────────────────>│   default   │
+ *            │                   │             │
+ *   Pred if no default           └──────┬──────┘
+ *            │                          │
+ *            v                    Pred if default
+ *            ┌─────────────┐            │
+ *            │             │            │
+ *            │    next     │<───────────┘
+ *            │             │
+ *            └─────────────┘
+ *
+ * Now, I deal with it as shown below. We go from test to test, based on the discriminant
+ * in the `SwitchStatement` itself. A `false` result moves on to the next test while a
+ * true result transfers control to the body of the `SwitchCase`. Some caveats are:
+ *
+ * 1. Without a `BreakStatement` at the end that post-dmoniates the block, it will fall
+ *    through to the next `SwitchCase` body.
+ * 2. There is no requirement that a `SwitchCase` will have a body block, in which case, we
+ *    keep falling to the next one, until we reach a body or exit the `SwitchStatement` entirely.
+ * 3. We go from false test to false test, however, there may be one `SwitchCase1 that doesn't
+ *    have a test, the default case. The default case need not be at the end and follow the
+ *    same rules as described above regarding falling through. The false edge from the final
+ *    test will go to the default body, if there is one, or the normal block following the
+ *    `SwitchStatement`, if there is one (otherwise it will eventually work its way up to the
+ *    exit node).
  *
  * TEST -> true -> body -> break -> out
  *                      -> no break -> next body
@@ -325,14 +404,15 @@ function ReturnStatement( node, visitorHelper )
  *           │                  │          │
  *           │                  V          │
  *           │  DEFAULT ─────> BODY ───────┤ break (or not)
- *           │                  │          │
- *           │                no│break     │
- *           │                no│body      │
- *           │                  │          │
- *           V                  V          │
+ *           │     ^            │          │
+ *           │     │          no│break     │
+ *           │   if│false     no│body      │
+ *           │  and│default     │          │
+ *           V     │            V          │
  *         TEST ─────────────> BODY ───────┤ break (or not)
- *                                         │
- *                                         │
+ *               if│false                  │
+ *           and no│default                │
+ *                 v                       │
  * CONT <──────────────────────────────────┘
  *
  * @param {SwitchStatement|AnnotatedNode} node
@@ -340,8 +420,10 @@ function ReturnStatement( node, visitorHelper )
  */
 function SwitchStatement( node, visitorHelper )
 {
-    let _switch  = visitorHelper.newBlock().from( visitorHelper.block ).add( node ),
-        cont     = visitorHelper.newBlock(),
+    const { newBlock, block } = visitorHelper;
+
+    let _switch  = newBlock().from( block ).add( node.discriminant ),
+        cont     = newBlock().as( visitorHelper.BlockManager.CONVERGE ),
 
         /** @type {CaseInfo} */
         _default,
@@ -349,8 +431,8 @@ function SwitchStatement( node, visitorHelper )
         /** @type {List<CaseInfo>} */
         caseList = list.create( node.cases.map( n => {
 
-            let test     = n.test && visitorHelper.newBlock().as( visitorHelper.BlockManager.TEST ).add( n.test ),
-                body     = n.consequent && n.consequent.length && visitorHelper.newBlock(),
+            let test     = n.test && newBlock().as( visitorHelper.BlockManager.TEST ).add( n.test ),
+                body     = n.consequent && n.consequent.length && newBlock(),
                 /** @type {CaseInfo} */
                 caseInfo = {
                     body,
@@ -365,9 +447,7 @@ function SwitchStatement( node, visitorHelper )
             return caseInfo;
         } ) );
 
-    _switch.add( node.discriminant );
-
-    visitorHelper.breakTargets.push( cont );
+    visitorHelper.addBreakTarget( cont );
 
     let prevCi       = _switch,
         needBody     = [],
@@ -425,7 +505,7 @@ function SwitchStatement( node, visitorHelper )
     if ( !caseList.size )
         _switch.to( cont );
 
-    visitorHelper.breakTargets.pop();
+    visitorHelper.popTarget();
 
     return cont;
 }
@@ -450,18 +530,40 @@ function ThrowStatement( node, visitorHelper )
     return null;
 }
 
-// /** @param {TryStatement} node */
-// [ Syntax.TryStatement ]: node => {
-//
-//     prev = add_block( node.block, prev );
-//
-//     prev = sub( node.block )
-//         handler = node.handler && add_block( node.handler, block ),
-//         finalizer = node.finalizer && add_block( node.finalizer, handler || block );
-//
-//
-//
-// },
+/**
+ * TRY -> CATCH -> FINALIZER -> OUT
+ * TRY          -> FINALIZER -> OUT
+ *     -> CATCH              -> OUT
+ *                           -> OUT
+ *
+ * IF FINALIZER
+ *      FINALIZER => OUT
+ * ELSE
+ *      CATCH, TRY => OUT
+ *
+ * @param {TryStatement|AnnotatedNode} node
+ * @param {VisitorHelper} visitorHelper
+ * @return {?CFGBlock|CFGBlock[]}
+ */
+function TryStatement( node, visitorHelper )
+{
+    let { newBlock, block } = visitorHelper,
+        finalizer,
+        tryBlock = newBlock().add( node ).from( block );
+
+    let tb = block;
+    visitorHelper.block = tryBlock;
+    let catchBlock = CatchClause( node.handler, visitorHelper );
+    visitorHelper.block = tb;
+
+    if ( node.finalizer )
+    {
+        finalizer = newBlock().from( [ tryBlock, catchBlock ] );
+        finalizer = visitorHelper.flatWalk( finalizer, node.finalizer, visitorHelper );
+    }
+
+    return finalizer || [ tryBlock, catchBlock ];
+}
 
 /**
  * @param {WhileStatement|AnnotatedNode} node
@@ -470,51 +572,56 @@ function ThrowStatement( node, visitorHelper )
  */
 function WhileStatement( node, visitorHelper )
 {
+    const { newBlock, block } = visitorHelper;
+
     let
-        body = visitorHelper.newBlock(),
-        alt  = visitorHelper.newBlock().as( visitorHelper.BlockManager.LOOP ),
-        test = visitorHelper.newBlock().as( visitorHelper.BlockManager.TEST ).add( node.test ).whenFalse( alt ).whenTrue( body );
+        body = newBlock(),
+        alt  = newBlock().as( visitorHelper.BlockManager.CONVERGE ),
+        test = newBlock().as( visitorHelper.BlockManager.TEST ).add( node.test ).whenFalse( alt ).whenTrue( body ).from( block );
 
-    visitorHelper.scanWalk( test, node.test, visitorHelper );
-
-    visitorHelper.breakTargets.push( alt );
-    visitorHelper.loopTargets.push( alt );
+    visitorHelper.addLoopTarget( test, alt );
     body = visitorHelper.flatWalk( body, node.body, visitorHelper );
-    visitorHelper.loopTargets.pop();
-    visitorHelper.breakTargets.pop();
+    visitorHelper.popTarget();
 
     body.to( test );
+
     return alt;
 }
 
 /**
  * @param {ConditionalExpression|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
- * @return {?CFGBlock}
+ * @return {?CFGBlock[]}
  */
 function ConditionalExpression( node, visitorHelper )
 {
-    let cons = visitorHelper.newBlock(),
-        alt  = visitorHelper.newBlock(),
-        test = visitorHelper.newBlock()
-            .from( visitorHelper.block )
+    const { newBlock, block } = visitorHelper;
+
+    let cons = newBlock(),
+        alternate,
+        test = newBlock()
+            .from( block )
             .add( node.test )
             .as( visitorHelper.BlockManager.TEST )
-            .whenTrue( cons )
-            .whenFalse( alt );
+            .whenTrue( cons );
 
-    visitorHelper.scanWalk( test, node.test, visitorHelper );
     cons = visitorHelper.flatWalk( cons, node.consequent, visitorHelper );
-    alt  = visitorHelper.flatWalk( alt, node.alternate, visitorHelper );
 
-    if ( !cons && !alt ) return null;
+    if ( node.alternate )
+    {
+        alternate = newBlock();
+        test.whenFalse( alternate );
+        alternate = visitorHelper.flatWalk( alternate, node.alternate, visitorHelper );
+    }
 
-    let cont = visitorHelper.newBlock();
+    const output = [];
 
-    if ( cons ) cont.from( cons );
-    if ( alt ) cont.from( alt );
+    if ( !cons && !alternate ) return null;
 
-    return cont;
+    if ( cons ) output.push( cons );
+    if ( alternate ) output.push( alternate );
+
+    return output;
 }
 
 /**

@@ -12,8 +12,6 @@ const
     {
         VisitorKeys,
         Syntax,
-        createsScope,
-        loopNode,
         checks: { isFunction }
     }                  = require( './defines' ),
     escope             = require( 'escope' ),
@@ -48,7 +46,7 @@ const
  * @extends Esprima.Node
  * @property {number} [index]
  * @property {AnnotatedNode} [parent]
- * @property {?CFGBlock} [block]
+ * @property {?CFGBlock} [cfg]
  * @property {function():string} [toString]
  */
 
@@ -231,7 +229,7 @@ class AST
             if ( assoc && assoc.labels )
             {
                 const la = assoc.labels.find( la => la.label === label );
-                if ( la ) return la.node.cfg;
+                if ( la ) return la.node.cfg || la.node;
             }
 
             scope = scope.outer;
