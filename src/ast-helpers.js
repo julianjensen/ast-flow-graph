@@ -7,7 +7,8 @@
 "use strict";
 
 const
-    { Syntax, checks } = require( '../defines' );
+    { Syntax } = require( 'espree' ),
+    isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression;
 
 /**
  *
@@ -146,10 +147,11 @@ function get_from_function( node, whatToGet = 'all' )
     if ( node.type === Syntax.Program )
     {
         const pg = {
-            name:   'main module',
+            name:   'main',
             params: [],
             body:   grab_body( node ),
-            lines:  [ node.loc.start.line, node.loc.end.line ]
+            lines:  [ node.loc.start.line, node.loc.end.line ],
+            node
         };
 
         return whatToGet && whatToGet !== 'all' ? pg[ whatToGet ] : pg;
@@ -161,8 +163,9 @@ function get_from_function( node, whatToGet = 'all' )
                 return n.name;
             else if ( n.type === Syntax.MemberExpression )
             {
+                if ( !n.computed && n.object.type === Syntax.Identifier && n.property.type === Syntax.Identifier ) return n.object.name + '.' + n.property.name;
                 if ( !n.computed || n.object.type !== Syntax.Identifier || n.property.type !== Syntax.Identifier ) return null;
-                if ( n.object.name !== 'Symbol' && n.object.name !== 'super' ) return null;
+                // if ( n.object.name !== 'Symbol' && n.object.name !== 'super' ) return null;
 
                 return n.object + '.' + n.property;
 
@@ -186,13 +189,15 @@ function get_from_function( node, whatToGet = 'all' )
                 return hopeForName( n.parent.key );
             else if ( n.parent.type === Syntax.VariableDeclarator )
                 return hopeForName( n.parent.id );
+            else if ( n.parent.type === Syntax.AssignmentExpression )
+                return hopeForName( n.parent.left );
 
             return 'anonymous';
         };
 
     if ( node.type === Syntax.Property || node.type === Syntax.MethodDefinition )
         return get_from_function( node.value, whatToGet );
-    else if ( !checks.isBaseFunction( node ) )
+    else if ( !isBaseFunction( node ) )
         throw new SyntaxError( `No function found near ${node.type}, unable to find ${whatToGet}` );
 
     return grab_info();
@@ -240,7 +245,8 @@ function get_from_function( node, whatToGet = 'all' )
                     name:   hopeForName( node ),
                     params: node.params,
                     body:   node.body.type === Syntax.BlockStatement ? node.body.body : node.body,
-                    lines:  [ node.loc.start.line, node.loc.end.line ]
+                    lines:  [ node.loc.start.line, node.loc.end.line ],
+                    node
                 };
         }
     }
@@ -248,6 +254,6 @@ function get_from_function( node, whatToGet = 'all' )
 
 module.exports = {
     assignment,
-    get_start_nodes,
+    isBaseFunction,
     get_from_function
 };

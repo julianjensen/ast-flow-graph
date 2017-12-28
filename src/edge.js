@@ -10,8 +10,8 @@
 class Edge
 {
     /**
-     * @param {BasicBlock} from
-     * @param {BasicBlock} to
+     * @param {number} from
+     * @param {number} to
      * @param {string} [type]
      */
     constructor( from, to, type )
@@ -19,14 +19,7 @@ class Edge
         this.from = from;
         this.to = to;
         this.type = type;
-    }
-
-    /**
-     * @return {{from: number, to: number}}
-     */
-    asIndex()
-    {
-        return { from: this.from.pre, to: this.to.pre };
+        this.gtype = 'tree';
     }
 
     /**
@@ -34,7 +27,25 @@ class Edge
      */
     toString()
     {
-        return `${this.from.pre} -> ${this.to.pre} [${this.type}]`;
+        return `${this.from} -> ${this.to} [${this.type}]`;
+    }
+
+    /**
+     * @return {boolean}
+     */
+    get isConditional()
+    {
+        return this.type === 'true' || this.type === 'false';
+    }
+
+    /**
+     * The graph edge type, as in 'tree', 'forward', 'back', or 'cross'.
+     *
+     * @param {string} gtype
+     */
+    graph_type( gtype )
+    {
+        this.gtype = gtype;
     }
 }
 

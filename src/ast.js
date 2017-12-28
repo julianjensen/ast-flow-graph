@@ -1,5 +1,5 @@
 /** ******************************************************************************************************************
- * @file Describe what ast does.
+ * @file Manages the AST, does some scans, and provides walkers.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
  * @date 26-Nov-2017
@@ -7,33 +7,34 @@
 "use strict";
 
 const
-    // _inspect                                     = require( 'util' ).inspect,
-    // inspect                                      = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
     {
-        VisitorKeys,
-        Syntax,
-        checks: { isFunction }
-    }                  = require( './defines' ),
+        get_from_function,
+        isBaseFunction
+    }                  = require( './ast-helpers' ),
+
     escope             = require( 'escope' ),
-    { Scopes }         = require( './scopes' ),
     { traverse }       = require( 'estraverse' ),
-    { parseModule }    = require( 'esprima' ),
+
+    espree = require( 'espree' ),
+    {
+        Syntax,
+        VisitorKeys
+    }                  = espree,
+
     { isArray: array } = Array,
+    get_node = node => array( node ) ? node[ 0 ] : node,
     nodeString         = function() {
         let keys = VisitorKeys[ this.type ].map( key => `${key}${array( this[ key ] ) ? '(' + this[ key ].length + ')' : ''}` ).join( ', ' );
 
         if ( keys ) keys = ': [' + keys + ']';
 
-        return `${this.type}, lvl: ${this.level}, line ${this.loc && this.loc.start && this.loc.start.line}${keys}`;
+        return `${this.type}, lvl: ${this.level}, line ${this.loc.start.line}${keys}`;
     };
 
 /**
- * @name ESTree
- * @alias Esprima
- */
-
-/**
- * @typedef {Statement|Function|Expression|Pattern|Declaration} AnnotatedNode
+ * It's damn near impossible to make WebStorm understand a class hierarchy.
+ *
+ * @typedef {Statement|Function|Expression|Pattern|Declaration|Node|BaseNode|Esprima.Node} AnnotatedNode
  * @extends BaseNode
  * @extends Node
  * @extends VariableDeclarator
@@ -42,8 +43,8 @@ const
  * @extends Pattern
  * @extends Expression
  * @extends Function
- * @implements ESTree.Node
- * @extends Esprima.Node
+ * @extends BlockStatement
+ * @extends espree.Node
  * @property {number} [index]
  * @property {AnnotatedNode} [parent]
  * @property {?CFGBlock} [cfg]
@@ -55,43 +56,17 @@ class AST
 {
     /**
      * @param {string} source
-     * @param {boolean} [isModule=true]
+     * @param {object} options
      */
-    constructor( source, isModule = true )
+    constructor( source, options )
     {
-        this.root = this.ast =
-            parseModule( source,
-                {
-                    loc:   true,
-                    range: true
-                } );
-
-        this.escope =
-            escope.analyze( this.ast,
-                {
-                    ecmaVersion: 6,
-                    sourceType:  isModule ? 'module' : 'script',
-                    directive:   true
-                } );
-
-        this.associate = new Map();
+        this.root = this.ast = espree.parse( source, options );
 
         this.nodesByIndex = [];
-        this.functions    = [ this.ast ];
+        this.functions    = [ get_from_function( this.ast ) ];
 
-        let index    = 0;
-        //     topScope = {
-        //         type:   isModule ? 'module' : 'script',
-        //         ast:    this.ast,
-        //         first:  0,
-        //         last:   0,
-        //         outer:  null,
-        //         inner:  [],
-        //         labels: []
-        //     },
-        //     scope    = topScope;
-        //
-        // this.ast.scope = topScope;
+        let index = 0,
+            labeled = [];
 
         this.traverse( ( node, parent ) => {
             this.nodesByIndex[ index ] = node;
@@ -101,50 +76,24 @@ class AST
             node.toString              = nodeString;
             node.level                 = 0;
 
-            // if ( node.type !== Syntax.Program && createsScope.has( node.type ) )
-            // {
-            //     node.scope = {
-            //         type:   Scopes.get_type( node.type ),
-            //         ast:    node,
-            //         first:  index - 1,
-            //         last:   index - 1,
-            //         outer:  scope,
-            //         inner:  [],
-            //         labels: []
-            //     };
-            //
-            //     if ( node.parent && loopNode.has( node.parent.type ) && !node.parent.type.startsWith( 'For' ) )
-            //         node.scope.type = 'loop';
-            //
-            //     scope.inner.push( node.scope );
-            //     scope = node.scope;
-            // }
+            if ( node.type === Syntax.LabeledStatement ) labeled.push( node );
 
-            if ( node.type === Syntax.LabeledStatement )
+            if ( isBaseFunction( node ) )
+                this.functions.push( get_from_function( node ) );
+
+            if ( node.type === Syntax.BlockStatement && node.body.length === 0 )
             {
-                // if ( scope.labels.includes( node.label ) )
-                //     throw new SyntaxError( `Duplicate label definition of "${node.label}"` );
-                // scope.labels.push( node.label );
-
-                let escope = this.escope.acquire( node ),
-                    assoc  = this.associate.get( escope );
-
-                if ( !assoc ) this.associate.set( escope, assoc = { labels: [] } );
-                assoc.labels.push( {
-                    label: node.label,
-                    node
+                node.body.push( {
+                    type: Syntax.EmptyStatement,
+                    loc: node.loc,
+                    range: node.range
                 } );
             }
 
-            if ( isFunction( node ) )
-                this.functions.push( node );
-
         } );
 
-        // this.scope = topScope;
-
-        const [ io, po, lvls ] = _BFS( {
-            start: () => 0,
+        const [ , , lvls ] = _BFS( {
+            start:      () => 0,
             successors: n => {
                 let node  = this.nodesByIndex[ n ],
                     succs = [];
@@ -165,52 +114,46 @@ class AST
         } );
 
         lvls.forEach( ( lvl, i ) => this.nodesByIndex[ i ].level = lvl );
-        this.indexOrder  = io;
-        this.bfsPreOrder = po;
+
+        this.escope = escope.analyze( this.ast, {
+            ecmaVersion: 6,
+            sourceType:  options.sourceType,
+            directive:   true
+        } );
+
+        this.associate = new Map();
+
+        labeled.forEach( node => {
+                let escope = this.node_to_scope( node ), // get_node( node.body ) ),
+                    assoc  = this.associate.get( escope );
+
+                if ( !assoc ) this.associate.set( escope, assoc = { labels: [] } );
+                assoc.labels.push( {
+                    label: node.label.name,
+                    node:  node // get_node( node.body )
+                } );
+
+        } );
+    }
+
+    node_to_scope( node )
+    {
+        let scope = this.escope.acquire( node );
+
+        if ( scope ) return scope;
+
+        while ( node && !scope )
+        {
+            node = node.parent;
+            if ( node ) scope = this.escope.acquire( node );
+        }
+
+        return scope;
     }
 
     *forFunctions()
     {
         yield *this.functions;
-    }
-
-    /**
-     * @param {AnnotatedNode} node
-     * @returns {*}
-     */
-    next_sibling( node )
-    {
-        return this.nodesByIndex[ this.bfsPreOrder[ this.indexOrder[ node.index ] ] ];
-    }
-
-    set_root( node )
-    {
-        this.root = node;
-        return this;
-    }
-
-    reset_root()
-    {
-        this.root = this.ast;
-        return this;
-    }
-
-    create_scopes()
-    {
-        const scopes = new Scopes( this.scope.type, this.scope.ast );
-
-
-        function _make_scope( s )
-        {
-            const cur = scopes.push_scope( s.type, s.ast );
-            cur.add_labels( ...s.labels );
-            s.inner.forEach( _make_scope );
-            scopes.pop_scope();
-        }
-
-        this.scope.inner.forEach( _make_scope );
-
-        return scopes;
     }
 
     /**
@@ -220,7 +163,7 @@ class AST
      */
     find_label( start, label )
     {
-        let scope = this.escope.acquire( start );
+        let scope = this.node_to_scope( start );
 
         while ( scope )
         {
@@ -229,23 +172,13 @@ class AST
             if ( assoc && assoc.labels )
             {
                 const la = assoc.labels.find( la => la.label === label );
-                if ( la ) return la.node.cfg || la.node;
+                if ( la ) return la.node.cfg;
             }
 
-            scope = scope.outer;
+            scope = scope.upper;
         }
 
         return null;
-    }
-
-    /**
-     * @param {Program|Node} [ast]
-     * @return {*}
-     */
-    top( ast = this.ast )
-    {
-        return ast;
-        // return { top: ast, start: ast.type === Syntax.Program ? ast : ( ast.body || ast.value ) };
     }
 
     /**
@@ -283,8 +216,9 @@ class AST
         {
             leave = enter;
             enter = node;
-            node = this.root;
+            node  = this.root;
         }
+
         /**
          * @param {BaseNode|Array<Node>} node
          * @param {?(BaseNode|Node)} parent
@@ -320,24 +254,6 @@ class AST
         }
 
         _walker( node || this.root, null, null, null, 0, null );
-    }
-
-    /**
-     * @param {?(AnnotatedNode|Array<AnnotatedNode>)} node
-     * @returns {Array<AnnotatedNode>}
-     */
-    nodelist( node )
-    {
-        if ( array( node ) ) return node;
-
-        if ( !node ) return [];
-
-        if ( VisitorKeys[ node.type ].includes( 'body' ) )
-            return array( node.body ) ? node.body : node.body ? [ node.body ] : [];
-
-        // console.warn( `Attempting to get a list of node but finding none: ${node}` );
-
-        return [ node ];
     }
 }
 
@@ -391,6 +307,5 @@ function _BFS( info )
 
     return __bfs( info.start() );
 }
-
 
 module.exports = AST;

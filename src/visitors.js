@@ -32,6 +32,7 @@
 
 /** */
 const
+    get_node = node => Array.isArray( node ) ? node[ 0 ] : node,
     { CFGBlock } = require( './cfg-block' ),
     list         = require( 'yallist' );
 
@@ -66,25 +67,42 @@ function BlockStatement( node, visitorHelper )
     return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ), node.body, visitorHelper );
 }
 
+/**
+ * @param {LabeledStatement|AnnotatedNode} node
+ * @param {VisitorHelper} visitorHelper
+ * @return {?CFGBlock}
+ */
+function LabeledStatement( node, visitorHelper )
+{
+    const
+        statement = visitorHelper.newBlock().from( visitorHelper.block ),
+        bod = node; // get_node( node.body );
+
+    // if ( bod.cfg && bod.cfg instanceof CFGBlock && bod.cfg.isa( visitorHelper.BlockManager.TEMPORARY ) )
+    // {
+    //     console.log( `Replacing temporary ${bod.cfg} with permanent labeled statement ${statement}` );
+    //     bod.cfg.replace( statement );
+    // }
+    // else
+        bod.cfg = statement;
+
+    return visitorHelper.flatWalk( statement, node.body, visitorHelper );
+}
+
 function to_label( node, vh, type, targets )
 {
     if ( node.label )
     {
         const
-            self  = vh.newBlock().from( vh.block ).add( node ).as( type ),
-            block = vh.ast.find_label( node, node.label );
+            self  = vh.newBlock().from( vh.block ).add( node ).as( type ).by( type ),
+            block = vh.ast.find_label( node, node.label.name );
 
-        if ( block )
-        {
-            if ( block instanceof CFGBlock )
-                block.from( self );
-            else
-                block.cfg = vh.newBlock().from( self ).as( vh.BlockManager.TEMPORARY );
+        if ( !block )
+            throw new SyntaxError( `Labeled "${type}" statement has no label "${node.label.name}" in scope: ${node}` );
 
-            return null;
-        }
+        block.from( self );
 
-        throw new SyntaxError( `Labeled "${type}" statement has no label "${node.label} in scope: ${node}` );
+        return null;
     }
     else
     {
@@ -93,7 +111,7 @@ function to_label( node, vh, type, targets )
         if ( !block )
             throw new SyntaxError( `Statement '${type}' is not inside a breakable scope` );
 
-        block.from( vh.block );
+        block.from( vh.block.add( node ).as( type ).by( type ) );
 
         return null;
     }
@@ -126,7 +144,7 @@ function CatchClause( node, visitorHelper )
  */
 function ContinueStatement( node, visitorHelper )
 {
-    return to_label( node, visitorHelper, visitorHelper.BlockManager.LOOP, visitorHelper.getLoopTarget );
+    return to_label( node, visitorHelper, visitorHelper.BlockManager.CONTINUE, visitorHelper.getLoopTarget );
 }
 
 /**
@@ -140,9 +158,9 @@ function DoWhileStatement( node, visitorHelper )
         { newBlock, block } = visitorHelper;
 
     let
-        body = newBlock().from( block ),
-        cont = newBlock().as( visitorHelper.BlockManager.CONVERGE ),
-        test = newBlock().as( visitorHelper.BlockManager.TEST ).add( node.test ).whenTrue( body ).whenFalse( cont );
+        body = newBlock().from( block ).by( 'DoWhile.body' ),
+        cont = newBlock().as( visitorHelper.BlockManager.CONVERGE ).by( 'DoWhile.conv' ),
+        test = newBlock().as( visitorHelper.BlockManager.TEST ).by( 'DoWhile.test' ).add( node.test ).whenTrue( body ).whenFalse( cont );
 
     visitorHelper.addLoopTarget( test, cont );
     body = visitorHelper.flatWalk( body, node, visitorHelper );
@@ -180,20 +198,84 @@ function DoWhileStatement( node, visitorHelper )
  */
 function ForStatement( node, visitorHelper )
 {
-    const { newBlock, block } = visitorHelper;
+    const
+        { newBlock, block } = visitorHelper;
 
-    let init   = newBlock().from( block ),
-        test   = newBlock().from( init ).as( visitorHelper.BlockManager.TEST ),
-        body   = newBlock(),
-        update = newBlock(),
-        cont   = newBlock().as( visitorHelper.BlockManager.CONVERGE );
+    let init   = node.init && newBlock().by( 'For.init' ).add( node.init ),
+        test   = node.test && newBlock().as( visitorHelper.BlockManager.TEST ).by( 'For.test' ).add( node.test ),
+        body   = newBlock().by( 'For.body' ),
+        update = node.update && newBlock().by( 'For.update' ).add( node.update ),
+        cont   = newBlock().as( visitorHelper.BlockManager.CONVERGE ).by( 'For.conv' );
 
-    test.whenTrue( body ).whenFalse( cont );
-    visitorHelper.addLoopTarget( update, cont );
-    update.from( visitorHelper.flatWalk( body, node.body, visitorHelper ) ).to( test );
+    // *************** ENTRY
+    // entry block wants: init -> test -> body (there is always a body)
+
+    if ( init )
+        block.to( init );
+    else if ( test )
+        block.to( test );
+    else
+        block.to( body );
+
+    // entry block resolved
+
+    if ( init )
+    {
+        if ( test )
+            init.to( test );
+        else
+            init.to( body );
+    }
+
+    // init block resolved
+
+    if ( test )
+    {
+        test.whenTrue( body );
+        test.whenFalse( cont );
+    }
+
+    visitorHelper.addLoopTarget( update || test || body, cont );
+    let endBody = visitorHelper.flatWalk( body, node.body, visitorHelper );
     visitorHelper.popTarget();
 
+    if ( endBody )
+    {
+        if ( update )
+            endBody.to( update );
+        else if ( test )
+            endBody.to( test );
+        else
+            endBody.to( body );
+    }
+
+    if ( update )
+    {
+        if ( test )
+            update.to( test );
+        else
+            update.to( body );
+    }
+
     return cont;
+
+
+    // const { newBlock, block } = visitorHelper;
+    //
+    // let init   = node.init && newBlock().from( block ).by( 'For.init' ),
+    //     test   = node.test && newBlock().from( init ).as( visitorHelper.BlockManager.TEST ).by( 'For.test' ),
+    //     body   = newBlock().by( 'For.body' ),
+    //     update = node.update && newBlock().by( 'For.update' ),
+    //     cont   = newBlock().as( visitorHelper.BlockManager.CONVERGE ).by( 'For.conv' );
+    //
+    // test.whenTrue( body );
+    //
+    // if ( node.test ) test.whenFalse( cont );
+    // visitorHelper.addLoopTarget( update, cont );
+    // update.from( visitorHelper.flatWalk( body, node.body, visitorHelper ) ).to( test );
+    // visitorHelper.popTarget();
+    //
+    // return cont;
 }
 
 /**
@@ -205,9 +287,9 @@ function ForInStatement( node, visitorHelper )
 {
     const { newBlock, block } = visitorHelper;
 
-    let update = newBlock().from( block ).add( node ),
-        body   = newBlock().from( update ),
-        cont   = newBlock().from( update ).as( visitorHelper.BlockManager.CONVERGE );
+    let update = newBlock().from( block ).add( node ).by( 'ForInOf.update' ),
+        body   = newBlock().from( update ).by( 'ForInOf.body' ),
+        cont   = newBlock().from( update ).as( visitorHelper.BlockManager.CONVERGE ).by( 'ForInOf.conv' );
 
     visitorHelper.addLoopTarget( update, cont );
     body = visitorHelper.flatWalk( body, node.body, visitorHelper );
@@ -258,33 +340,40 @@ function IfStatement( node, visitorHelper )
     let test       = visitorHelper.newBlock()
         .as( visitorHelper.BlockManager.TEST )
         .from( visitorHelper.block )
+        .by( 'If.test' )
         .add( node.test ),
 
-        consequent = visitorHelper.newBlock(),
-        alternate;
+        consequent = visitorHelper.newBlock().by( 'If.cons' ),
+        alternate,
+        cont;
         // cont       = visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE );
 
     test.whenTrue( consequent );
     consequent = visitorHelper.flatWalk( consequent, node.consequent, visitorHelper );
 
+    alternate = visitorHelper.newBlock().by( 'If.alt' );
+    test.whenFalse( alternate );
+
     if ( node.alternate )
-    {
-        alternate = visitorHelper.newBlock();
-        test.whenFalse( alternate );
         alternate = visitorHelper.flatWalk( alternate, node.alternate, visitorHelper );
-    }
 
-    return alternate ? [ consequent, alternate ] : [ consequent ];
-}
+    // if ( consequent ) cont.from( consequent );
+    // if ( alternate ) cont.from( alternate );
+    // if ( !consequent && !node.alternate ) test.whenFalse( cont );
 
-/**
- * @param {LabeledStatement|AnnotatedNode} node
- * @param {VisitorHelper} visitorHelper
- * @return {?CFGBlock}
- */
-function LabeledStatement( node, visitorHelper )
-{
-    return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ), node.statement, visitorHelper );
+    // return [ cont ];
+
+    if ( !node.alternate && consequent ) consequent.to( alternate );
+
+    // if ( !consequent && !node.alternate )
+    // {
+    //     const cont = visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE );
+    //     test.whenFalse( cont );
+    //     return [ cont ];
+    // }
+
+    return [ consequent, alternate ];
+    // return alternate ? [ consequent, alternate ] : !consequent && !node.alternate ? [ visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE ).whenFalse( test ) ] : [ consequent ];
 }
 
 /**
@@ -457,7 +546,7 @@ function SwitchStatement( node, visitorHelper )
     caseList.forEach( ci => {
         if ( ci.test )
         {
-            lastTest = ci;
+            lastTest = ci.test;
             if ( prevCi !== _switch )
                 prevCi.test.whenFalse( ci.test );
             else
@@ -483,7 +572,7 @@ function SwitchStatement( node, visitorHelper )
 
             needBody.length = 0;
 
-            ci.test.whenTrue( ci.body );
+            if ( ci.test ) ci.test.whenTrue( ci.body );
 
             fallsThrough = visitorHelper.flatWalk( ci.body, ci.consequent, visitorHelper );
         }
@@ -549,11 +638,11 @@ function TryStatement( node, visitorHelper )
 {
     let { newBlock, block } = visitorHelper,
         finalizer,
-        tryBlock = newBlock().add( node ).from( block );
+        tryBlock            = newBlock().add( node ).from( block );
 
-    let tb = block;
+    let tb              = block;
     visitorHelper.block = tryBlock;
-    let catchBlock = CatchClause( node.handler, visitorHelper );
+    let catchBlock      = CatchClause( node.handler, visitorHelper );
     visitorHelper.block = tb;
 
     if ( node.finalizer )
@@ -583,7 +672,10 @@ function WhileStatement( node, visitorHelper )
     body = visitorHelper.flatWalk( body, node.body, visitorHelper );
     visitorHelper.popTarget();
 
-    body.to( test );
+    if ( body )
+        body.to( test );
+    else
+        console.log( `wtf? ${node}` );
 
     return alt;
 }

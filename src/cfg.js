@@ -7,15 +7,18 @@
 "use strict";
 
 const
-    // _inspect                                     = require( 'util' ).inspect,
-    // inspect                                      = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
     AST = require( './ast' ),
-    CFGBuilder = require( './cfg-builder' ),
     create_new_cfg = require( './cfg-leader' ),
-    { checks, Syntax } = require( './defines' ),
-    all_methods        = cdecl => cdecl.body.body.map( node => node.type === Syntax.MethodDefinition && node ).filter( x => !!x ),
-    BasicBlock         = require( './basic-block' ),
-    BasicBlockList     = require( './basic-block-list' );
+    defaultOptions = {
+        loc: true,
+        range: true,
+        ecmaVersion: 9,
+        sourceType: 'module',
+        ecmaFeatures: {
+            impliedStrict: true,
+            experimentalObjectRestSpread: true
+        }
+    };
 
 /** */
 class CFG
@@ -23,41 +26,51 @@ class CFG
     /**
      * @param {string} source
      */
-    constructor( source )
+    constructor( source, options = defaultOptions )
     {
-        this.ast = new AST( source );
+        this.options = Object.assign( {}, defaultOptions, options );
+        this.options.ecmaFeatures = Object.assign( {}, defaultOptions.ecmaFeatures, options.ecmaFeatures );
+
+        this.ast = new AST( source, this.options );
         this.cfgs = [];
         this.scopes = this.ast.escope;
-        for ( const fnode of this.ast.forFunctions() )
-            this.cfgs.push( create_new_cfg( this.ast.set_root( fnode ) ) );
-
-        for ( const c of this.cfgs )
-            console.log( `Name: ${c.name}:${c.lines[ 0 ]}-${c.lines[ 1 ]}, size: ${c.bm.size}` );
     }
 
     toString()
     {
-        return this.cfgs.map( b => `${b.name}:\n${b.bm}` ).join( '\n\n' );
+        return this.cfgs.map( b => `${b}` ).join( '\n\n' ); // .name}:${b.lines[ 0 ]}-${b.lines[ 1 ]}\n${b.bm}` ).join( '\n\n' );
+    }
+
+    toTable()
+    {
+        return this.cfgs.map( b => b.toTable() ).join( '\n\n' );
     }
 
     /**
-     * @param {boolean} onlyMain
-     * @return {Array<CFGBuilder>}
+     * @param {string} [name]
+     * @return {Array<CFGInfo>}
      */
-    generate( onlyMain = false )
+    generate( name )
     {
-        const opts = { ast: this.ast.ast, scopes: this.scopes, blockList: new BasicBlockList() };
+        if ( !name )
+        {
+            for ( const func of this.ast.forFunctions() )
+                this.cfgs.push( create_new_cfg( func, this.ast ) );
+        }
+        else
+        {
+            const func = [ ...this.ast.forFunctions() ].find( cfgInfo => cfgInfo.name === name );
 
-        if ( !onlyMain ) opts.collector = obj => this.nested( obj );
+            if ( !func )
+                return null;
 
-        this.cfgs.push( new CFGBuilder( opts ) );
-
-        return onlyMain ? this.cfgs[ 0 ] : this.cfgs;
+            return create_new_cfg( func, this.ast );
+        }
     }
 
     /**
      * @param {string} name
-     * @return {CFGBuilder}
+     * @return {CFGInfo}
      */
     by_name( name )
     {
@@ -65,9 +78,9 @@ class CFG
     }
 
     /**
-     * @type {Iterable<CFGBuilder>}
+     * @type {Iterable<CFGInfo>}
      */
-    * [ Symbol.iterator ]()
+    *[ Symbol.iterator ]()
     {
         yield *this.cfgs;
     }
@@ -80,50 +93,9 @@ class CFG
         this.cfgs.forEach( fn );
     }
 
-    /**
-     * @param {Node} node
-     * @return {CFGBuilder}
-     */
-    create_cfg( node )
+    create_dot( cfg, title = cfg.name + ':' + cfg.lines.join( '-' ) )
     {
-        return new CFGBuilder( {
-            ast: node,
-            scopes: this.scopes,
-            collector: obj => this.nested( obj ),
-            blockList: new BasicBlockList()
-        } );
-    }
-
-    /**
-     * @param {object} obj
-     */
-    nested( obj )
-    {
-        const
-            pre = BasicBlock.pre;
-
-        switch ( obj.node.type )
-        {
-            case Syntax.ArrowFunctionExpression:
-            case Syntax.FunctionExpression:
-            case Syntax.FunctionDeclaration:
-                this.cfgs.push( new CFGBuilder( { ast: obj.node, scopes: this.scopes, scope: this.scopes.current, collector: obj => this.nested( obj ), blockList: new BasicBlockList() } ) );
-                break;
-
-            case Syntax.MethodDefinition:
-                this.cfgs.push( new CFGBuilder( { ast: obj.node, scopes: this.scopes, scope: this.scopes.current, collector: obj => this.nested( obj ), blockList: new BasicBlockList() } ) );
-                break;
-
-            case Syntax.ClassExpression:
-            case Syntax.ClassDeclaration:
-                this.scopes.add( checks.functionExpressionName( obj.node ), obj.current );
-                this.scopes.push_scope( 'class', obj.node );
-                all_methods( obj.node ).forEach( meth => this.cfgs.push( new CFGBuilder( { ast: meth, scopes: this.scopes, scope: this.scopes.current, collector: obj => this.nested( obj ), blockList: new BasicBlockList() } ) ) );
-                this.scopes.pop_scope();
-                break;
-        }
-
-        BasicBlock.pre = pre;
+        return cfg.bm.create_dot( title );
     }
 }
 

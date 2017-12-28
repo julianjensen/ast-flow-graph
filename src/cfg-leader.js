@@ -8,63 +8,13 @@
 "use strict";
 
 const
-    BlockManager          = require( './cfg/cfg-block' ),
-    visitors              = require( './cfg/visitors' ),
-    { get_from_function } = require( './utils/ast-helpers' ),
-    {
-        cfgBlocks,
-        causesUnreachable
-    }                     = require( './defines' ),
-    {
-        assignment
-    }                     = require( './utils/ast-helpers' ),
-    { isArray: array }    = Array;
+    { as_table } = require( './dump' ),
+    BlockManager       = require( './cfg-block' ),
+    visitors           = require( './visitors' ),
+    { assignment }     = require( './ast-helpers' ),
+    { Syntax } = require( 'espree' ),
+    { isArray: array } = Array;
 
-/**
- * If an AST node doesn't output an edge then it can be assumed that it has a single edge to the next ASTNode, if any,
- * and can be merged into the current block. Multiple edges requires additional blocks.
- *
- * @param {AST} ast
- * @param {AnnotatedNode|Array<AnnotatedNode>} nodes
- * @param {CFGBlock} prev
- * @param {BlockManager} bm
- */
-function cfg_leaders( ast, nodes, prev, bm )
-{
-    walk_block( prev, nodes );
-    // if ( array( n ) )
-    //     return walk_block( prev, n );
-    // else if ( n.body )
-    //     return walk_block( prev, n.body );
-    // else
-    //     return call_node_type( n );
-    // // {
-    // //     if ( entries[ n.type ] )
-    // //         return entries[ n.type ]( n, p, prevNode, nextNode );
-    // //     else
-    // //         return entries.default( n );
-    // // }
-
-    /**
-     * @param n
-     * @returns {*}
-     */
-    function call_node_type( n )
-    {
-        if ( entries[ n.type ] )
-            return entries[ n.type ]( n );
-        else
-            return entries.default( n );
-    }
-
-    // }
-
-    // leader( ast.root, ast.root.parent, bm.block().from( bm.startNode ), null, null );
-    // bm.finish();
-
-
-    return walk_block( prev, nodes );
-}
 
 /**
  * @typedef {object} CFGInfo
@@ -74,16 +24,22 @@ function cfg_leaders( ast, nodes, prev, bm )
  * @property {Array<Number>} lines
  * @property {BlockManager} [bm]
  * @property {CFGBlock} [trailing]
+ * @property {AnnotatedNode|Node|BaseNode} node,
+ * @property {AST} ast
  */
 
 /**
+ * @param {CFGInfo} CFGInfo
  * @param {AST} ast
  */
-function start_new_cfg( ast )
+function create_new_cfg( cfgInfo, ast )
 {
 
+    ast.root = cfgInfo.node;
+    cfgInfo.ast = ast;
+
     /** @type {CFGInfo} */
-    let cfg = get_from_function( ast.root );
+    let cfg = cfgInfo;
 
     cfg.bm = new BlockManager();
 
@@ -96,7 +52,7 @@ function start_new_cfg( ast )
             block:        cfg.bm.startNode,
             toExit:       [],
             newBlock:     () => cfg.bm.block(),
-            flatWalk:     ( b, n, vh ) => new_walker( b, n, vh ),
+            flatWalk:     ( b, n, vh ) => flat_walker( b, n, vh ),
             scanWalk:     ( b, n, vh ) => scan_for_assignments( b, n, vh ),
             breakTargets: [],
             addBreakTarget( block )
@@ -141,8 +97,7 @@ function start_new_cfg( ast )
         visitorHelper[ name ] = fn.bind( visitorHelper );
     } );
 
-    // cfg.trailing = cfg_leaders( ast, cfg.body, cfg.bm.startNode, cfg.bm );
-    let final = new_walker( visitorHelper.block, ast.root, visitorHelper );
+    let final = flat_walker( visitorHelper.block, ast.root, visitorHelper );
 
     visitorHelper.toExit.forEach( xn => cfg.bm.toExitNode( xn ) );
 
@@ -154,7 +109,9 @@ function start_new_cfg( ast )
     if ( final )
         final.forEach( f => cfg.bm.toExitNode( f ) );
 
-    cfg.bm.finish();
+    cfg.bm.finish( cfg );
+    cfg.toString = () => `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}\n${cfg.bm}`;
+    cfg.toTable = () => as_table( `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}`, [ "TYPE", "LINES", "LEFT EDGES", "NODE", "RIGHT EDGES", "CREATED BY", "LIVEOUT", "PHI", "AST" ], cfg.bm.toTable() );
     return cfg;
 }
 
@@ -173,63 +130,7 @@ function scan_for_assignments( block, nodes, visitorHelper )
         visitorHelper.ast.walker( nodes, assignment );
 }
 
-/**
- * @param {CFGBlock} block
- * @param {?(AnnotatedNode|BlockStatement|Array<AnnotatedNode>)} nodes
- * @param {VisitorHelper} visitorHelper
- * @returns {?CFGBlock}
- */
-function walk_block( block, nodes, visitorHelper )
-{
-    let i = 0;
-
-    visitorHelper.block = block;
-
-    if ( !nodes ) return visitorHelper.block = block;
-
-    if ( !array( nodes ) )
-    {
-        if ( nodes.body )
-            nodes = nodes.body;
-
-        if ( !array( nodes ) ) nodes = [ nodes ];
-    }
-
-    const nodeList = nodes; // ast.nodelist( nodes );
-
-    if ( ( block = visitorHelper.block ) )
-    {
-        while ( i < nodeList.length )
-        {
-            const n = nodeList[ i ];
-
-            // if ( !visitors[ n.type ] )
-            // {
-            //     scan_for_assignments( block, n, visitorHelper );
-            //     block.add( n );
-            // }
-            if ( visitors[ n.type ] )
-                block = visitors[ n.type ]( n, visitorHelper );
-            else
-            {
-                block = null;
-                break;
-            }
-
-            if ( !block )
-            {
-                block = null;
-                break;
-            }
-
-            ++i;
-        }
-    }
-
-    return visitorHelper.block = block;
-}
-
-function new_walker( block, nodes, visitorHelper )
+function flat_walker( block, nodes, visitorHelper )
 {
     visitorHelper.block = block;
 
@@ -237,7 +138,16 @@ function new_walker( block, nodes, visitorHelper )
 
     if ( !array( nodes ) )
     {
-        if ( nodes.body )
+        // if ( nodes.type === Syntax.BlockStatement && nodes.body.length === 0 )
+        // {
+        //     nodes.body.push( {
+        //         type: Syntax.EmptyStatement,
+        //         loc: nodes.loc,
+        //         range: nodes.range,
+        //     } );
+        // }
+
+        if ( nodes.body && /Function/.test( nodes.type ) )
             nodes = nodes.body;
 
         if ( !array( nodes ) ) nodes = [ nodes ];
@@ -252,16 +162,15 @@ function new_walker( block, nodes, visitorHelper )
         if ( visitors[ node.type ] )
         {
             let outputs = visitors[ node.type ]( node, visitorHelper );
-            // console.log( node.type + " outputs ", outputs );
 
-            if ( outputs === null )
+            if ( !outputs )
             {
                 visitorHelper.block = null;
                 break;
             }
             else if ( !array( outputs ) )
             {
-                outputs.createdBy = node.type;
+                if ( !outputs.createdBy ) outputs.createdBy = 'CFG: ' + node.type;
 
                 if ( outputs.isa( BlockManager.CONVERGE ) )
                     visitorHelper.block = outputs.isNotA( BlockManager.CONVERGE );
@@ -278,7 +187,7 @@ function new_walker( block, nodes, visitorHelper )
                 }
 
                 outputs.forEach( b => {
-                    b.createdBy = node.type;
+                    if ( !b.createdBy ) b.createdBy = 'AST: ' + ( b.first() ? b.first().type : 'none' );
                     if ( b.isa( BlockManager.CONVERGE ) )
                         visitorHelper.block = b.isNotA( BlockManager.CONVERGE );
                 } );
@@ -296,31 +205,4 @@ function new_walker( block, nodes, visitorHelper )
     return visitorHelper.block;
 }
 
-
-// function create_new_cfg( ast )
-// {
-//     if ( astSeen.includes( ast.root.index ) )
-//     {
-//         console.log( 'duplicate ast:', ast.root );
-//         console.trace();
-//         return null;
-//     }
-//
-//     const
-//         name = get_from_function( ast.root, 'name' ),
-//         line = ast.root.loc.start.line;
-//
-//     if ( name === 'neat' )
-//         debugger;
-//     else if ( line === -1 )
-//         debugger;
-//
-//     astSeen.push( ast.root.index );
-//     const bm = new BlockManager();
-//     cfg_leaders( ast, bm );
-//     bm.finish();
-//     return bm;
-// }
-
-// module.exports = create_new_cfg;
-module.exports = start_new_cfg;
+module.exports = create_new_cfg;

@@ -7,6 +7,8 @@
 "use strict";
 
 const
+    _inspect                                     = require( 'util' ).inspect,
+    inspect                                      = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
     CFG   = require( './src/cfg' ),
     fs    = require( 'fs' ),
     stdin = process.stdin;
@@ -32,7 +34,14 @@ function process_file( source )
         cfg = new CFG( source );
     // list = cfg.asList();
 
-    console.log( `${cfg}` );
+    cfg.generate();
+
+    console.log( cfg.toTable() );
+
+    // const
+    //     de = cfg.by_name( 'pp$1.parseClass' ),
+    //     dot = cfg.create_dot( de );
+    // console.log( dot );
     // console.log( `scopes:\n`, cfg.scopes );
     return;
 

@@ -38,10 +38,12 @@
         "@types/estree": "^0.0.38",
         "chai": "^4.1.1",
         "chalk": "^2.3.0",
+        "cli-color": "^1.2.0",
         "coveralls": "^2.13.1",
         "dependency-check": "^2.5.1",
         "eslint": "^4.4.0",
         "execa": "^0.8.0",
+        "eyes": "^0.1.8",
         "get-stdin": "^5.0.1",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
@@ -53,10 +55,11 @@
     "dependencies": {
         "cli-table2": "^0.2.0",
         "common-tags": "^1.5.1",
-        "dominators": "^1.0.6",
+        "dominators": "^1.1.1",
         "escope": "^3.6.0",
-        "esprima": "^4.0.0",
+        "espree": "^3.5.2",
         "estraverse": "^4.2.0",
+        "sprintf-js": "^1.1.1",
         "traversals": "^1.0.15",
         "yallist": "^3.0.2"
     }

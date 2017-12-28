@@ -46,8 +46,7 @@ const
             color:     '#F95738',
             fontname:  'arial italic',
             style:     'dashed',
-            fontcolor: '#F95738',
-            label:     'true'
+            fontcolor: '#F95738'
         }
     };
 
@@ -61,6 +60,7 @@ const
  * @property {Array<[ number, number ]>} conditional
  * @property {Array<[ number, number ]>} unconditional
  * @property {object} [dotOptions={}]
+ * @property {CFGBlock[]} blocks
  */
 
 /**
@@ -78,18 +78,17 @@ function dot( opts )
             dotOptions = {},
             conditional: condEdges,
             unconditional: uncondEdges,
-            nodeLabels,
-            edgeLabels
+            nodeLabels
         } = opts,
         /**
          * @param {Edge} edge
          * @return {string}
          */
-        formatEdge           = ( [ from, to ] ) => {
+        formatEdge           = ( { from, to, type } ) => {
             const
-                label        = edgeLabels[ from ],
+                label        = type === 'normal' ? '' : type,
                 escapedLabel = label && label.replace( /"/g, '\\"' ),
-                attributes   = label ? ` [label = " ${escapedLabel}"]` : "";
+                attributes   = label ? ` [label = "${escapedLabel}"]` : "";
 
             return `${from} -> ${to}${attributes}`;
         },
@@ -133,20 +132,23 @@ function dot( opts )
 
     innerLines.push( `${start} [label = "entry:${start}"${entry ? ', ' + entry : ''}];` );
     innerLines.push( `${end} [label = "exit:${end}"${exit ? ', ' + exit : ''}];` );
-    innerLines.push( ...this.asArray.filter( ( b, i ) => i !== start && i !== end && !!nodeLabels[ i ] ).map( ( b, i ) => `${i} [label = "${nodeLabels[ i ]}"${condEdges.includes( i ) && test ? ', ' + test : ''}];` ) );
+    innerLines.push( ...opts.blocks
+        .filter( b => !!b )
+        .map( b => b.id !== start && b.id !== end && !!nodeLabels[ b.id ] && `${b.id} [label = "${nodeLabels[ b.id ]}"${condEdges.includes( b.id ) && test ? ', ' + test : ''}];` || null )
+        .filter( s => !!s ) );
 
     if ( condEdges.length )
     {
         innerLines.push( "", "// Unconditional edges" );
         if ( unconditional ) innerLines.push( `edge [${unconditional}];` );
-        innerLines.push( ...condEdges.map( formatEdge ) );
+        innerLines.push( ...uncondEdges.map( formatEdge ) );
     }
 
     if ( uncondEdges.length )
     {
         innerLines.push( "", "// Conditional edges" );
         if ( conditional ) innerLines.push( `edge [${conditional}];` );
-        innerLines.push( ...uncondEdges.map( formatEdge ) );
+        innerLines.push( ...condEdges.map( formatEdge ) );
     }
 
     let graphLines = [ `digraph "${title}" {`, ...innerLines.map( l => '    ' + l ), "}" ];
