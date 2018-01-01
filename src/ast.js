@@ -7,13 +7,15 @@
 "use strict";
 
 const
+    assert = require( 'assert' ),
     {
         get_from_function,
         isBaseFunction
-    }                  = require( './ast-helpers' ),
+    }                  = require( './variable-helpers' ),
 
     escope             = require( 'escope' ),
-    { traverse }       = require( 'estraverse' ),
+    estraverse = require( 'estraverse' ),
+    { traverse }       = estraverse,
 
     espree = require( 'espree' ),
     {
@@ -22,7 +24,6 @@ const
     }                  = espree,
 
     { isArray: array } = Array,
-    get_node = node => array( node ) ? node[ 0 ] : node,
     nodeString         = function() {
         let keys = VisitorKeys[ this.type ].map( key => `${key}${array( this[ key ] ) ? '(' + this[ key ].length + ')' : ''}` ).join( ', ' );
 
@@ -31,25 +32,7 @@ const
         return `${this.type}, lvl: ${this.level}, line ${this.loc.start.line}${keys}`;
     };
 
-/**
- * It's damn near impossible to make WebStorm understand a class hierarchy.
- *
- * @typedef {Statement|Function|Expression|Pattern|Declaration|Node|BaseNode|Esprima.Node} AnnotatedNode
- * @extends BaseNode
- * @extends Node
- * @extends VariableDeclarator
- * @extends Statement
- * @extends Declaration
- * @extends Pattern
- * @extends Expression
- * @extends Function
- * @extends BlockStatement
- * @extends espree.Node
- * @property {number} [index]
- * @property {AnnotatedNode} [parent]
- * @property {?CFGBlock} [cfg]
- * @property {function():string} [toString]
- */
+let stableSort = 0;
 
 /** */
 class AST
@@ -60,6 +43,23 @@ class AST
      */
     constructor( source, options )
     {
+        const stepsUp = es => {
+            let s = -1;
+            while ( es )
+            {
+                ++s;
+                es = es.upper;
+            }
+
+            return s;
+        };
+
+        this.addedLines = [];
+        this.blankLines = [];
+        source.split( /\r?\n/ ).forEach( ( line, num ) => /^\s*$/.test( line ) && this.blankLines.push( num ) );
+
+        this.source = source;
+        this.renameOffsets = [];
         this.root = this.ast = espree.parse( source, options );
 
         this.nodesByIndex = [];
@@ -92,45 +92,28 @@ class AST
 
         } );
 
-        const [ , , lvls ] = _BFS( {
-            start:      () => 0,
-            successors: n => {
-                let node  = this.nodesByIndex[ n ],
-                    succs = [];
-
-                VisitorKeys[ node.type ].forEach( k => {
-                    const s = node[ k ];
-
-                    if ( !s ) return;
-
-                    if ( !array( s ) )
-                        succs.push( s.index );
-                    else
-                        succs = succs.concat( s.map( sn => sn.index ) );
-                } );
-
-                return succs;
-            }
-        } );
-
-        lvls.forEach( ( lvl, i ) => this.nodesByIndex[ i ].level = lvl );
-
         this.escope = escope.analyze( this.ast, {
             ecmaVersion: 6,
             sourceType:  options.sourceType,
             directive:   true
         } );
 
+        this.traverse( node => {
+            const s = this.node_to_scope( node );
+            node.level = stepsUp( s );
+            node.scope = s;
+        } );
+
         this.associate = new Map();
 
         labeled.forEach( node => {
-                let escope = this.node_to_scope( node ), // get_node( node.body ) ),
+                let escope = this.node_to_scope( node ),
                     assoc  = this.associate.get( escope );
 
                 if ( !assoc ) this.associate.set( escope, assoc = { labels: [] } );
                 assoc.labels.push( {
                     label: node.label.name,
-                    node:  node // get_node( node.body )
+                    node:  node
                 } );
 
         } );
@@ -255,57 +238,76 @@ class AST
 
         _walker( node || this.root, null, null, null, 0, null );
     }
-}
 
-/**
- * @param {object} info
- */
-function _BFS( info )
-{
-    const
-        queue      = [],
-        preNumber  = [],
-        parents    = [],
-        preOrder   = [],
-        indexOrder = [],
-        levels     = [];
-
-    /**
-     * @param {number} index
-     * @returns {Array<Array<number>,Array<number>,Array<number>>}
-     * @private
-     */
-    function __bfs( index )
+    flat_walker( nodes, cb )
     {
-        queue.push( index );
-
-        indexOrder[ index ] = preOrder.length;
-        preOrder.push( index );
-
-        parents[ index ] = levels[ index ] = 0;
-
-        while ( queue.length )
+        if ( !array( nodes ) )
         {
-            let v    = queue.shift(),
-                list = info.successors( v );
+            if ( nodes.body && /Function/.test( nodes.type ) )
+                nodes = nodes.body;
 
-            list.forEach( w => {
-                if ( typeof parents[ w ] !== 'number' )
-                {
-                    preNumber[ w ] = preOrder.length - 1;
-                    preOrder.push( w );
-
-                    parents[ w ] = v;
-                    levels[ w ]  = levels[ v ] + 1;
-                    queue.push( w );
-                }
-            } );
+            if ( !array( nodes ) ) nodes = [ nodes ];
         }
 
-        return [ indexOrder, preOrder, levels ];
+        let i = 0;
+
+        while ( i < nodes.length && cb( nodes[ i ], n => this.flat_walker( n, cb ) ) !== false )
+            ++i;
     }
 
-    return __bfs( info.start() );
+    call_visitors( node, cb )
+    {
+        if ( !node || !VisitorKeys[ node.type ] ) return;
+
+        VisitorKeys[ node.type ].forEach( key => node[ key ] && cb( node[ key ] ) );
+    }
+
+    add_line( lineNumber, sourceLine )
+    {
+        const renumIndex = this.blankLines.findIndex( ln => ln <= lineNumber );
+
+        if ( renumIndex !== -1 )
+        {
+            for ( let i = renumIndex; i < this.blankLines.length; i++ )
+                this.blankLines[ i ]++;
+        }
+
+        this.addedLines.push( { lineNumber: lineNumber * 10000 + stableSort++, sourceLine } );
+    }
+
+    rename( inode, newName )
+    {
+        assert( inode.type === Syntax.Identifier || inode.type === Syntax.MemberExpression, "Not an Identifier in rename, found: " + inode.type );
+
+        if ( inode.type === Syntax.MemberExpression )
+            inode = inode.property;
+
+        if ( !~this.renameOffsets.findIndex( ro => ro.start === inode.range[ 0 ] ) )
+            this.renameOffsets.push( { start: inode.range[ 0 ], end: inode.range[ 1 ], newName } );
+    }
+
+    as_source()
+    {
+        if ( this.renameOffsets.length === 0 ) return this.source;
+
+        const offsets = this.renameOffsets.sort( ( a, b ) => b.start - a.start );
+
+        let source = this.source;
+
+        for ( const { start, end, newName } of offsets )
+        {
+            console.log( `start: ${start}, end: ${end}, current: ${source.substr( start, 4 )}` );
+            source = source.substr( 0, start ) + newName + source.substr( end );
+        }
+
+        const lines = source.split( /\r?\n/ );
+
+        this.addedLines.sort( ( a, b ) => b.lineNumber - a.lineNumber ).forEach( ( { lineNumber, sourceLine } ) => {
+            lines.splice( Math.floor( lineNumber / 10000 ), 0, sourceLine );
+        } );
+
+        return lines.map( ( l, i ) => `${i.toString().padStart( 3 )}. ${l}` ).join( '\n' );
+    }
 }
 
 module.exports = AST;

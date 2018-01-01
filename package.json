@@ -36,6 +36,7 @@
     "devDependencies": {
         "@types/esprima": "^4.0.1",
         "@types/estree": "^0.0.38",
+        "astring": "^1.2.0",
         "chai": "^4.1.1",
         "chalk": "^2.3.0",
         "cli-color": "^1.2.0",
@@ -56,11 +57,13 @@
         "cli-table2": "^0.2.0",
         "common-tags": "^1.5.1",
         "dominators": "^1.1.1",
+        "escodegen": "^1.9.0",
         "escope": "^3.6.0",
         "espree": "^3.5.2",
         "estraverse": "^4.2.0",
         "sprintf-js": "^1.1.1",
         "traversals": "^1.0.15",
+        "typescript": "^2.6.2",
         "yallist": "^3.0.2"
     }
 }

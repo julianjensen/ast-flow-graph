@@ -10,30 +10,8 @@
  *******************************************************************************************************/
 'use strict';
 
-/**
- * @typedef {object} VisitorHelper
- * @property {BlockManager.} BlockManager
- * @property {BlockManager#} bm
- * @property {AST} ast
- * @property {?CFGBlock} prev
- * @property {?CFGBlock} block
- * @property {function():CFGBlock} newBlock
- * @property {CFGBlock[]} toExit
- * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):CFGBlock} [flatWalk]
- * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):*} [scanWalk]
- * @property {CFGBlock[]} breakTargets
- * @property {function(CFGBlock):*} addBreakTarget
- * @property {function(CFGBlock, CFGBlock):*} addLoopTarget
- * @property {function():*} popTarget
- * @property {function():?CFGBlock} getBreakTarget
- * @property {function():?CFGBlock} getLoopTarget
- */
-
-
 /** */
 const
-    get_node = node => Array.isArray( node ) ? node[ 0 ] : node,
-    { CFGBlock } = require( './cfg-block' ),
     list         = require( 'yallist' );
 
 module.exports = {
@@ -75,16 +53,9 @@ function BlockStatement( node, visitorHelper )
 function LabeledStatement( node, visitorHelper )
 {
     const
-        statement = visitorHelper.newBlock().from( visitorHelper.block ),
-        bod = node; // get_node( node.body );
+        statement = visitorHelper.newBlock().from( visitorHelper.block );
 
-    // if ( bod.cfg && bod.cfg instanceof CFGBlock && bod.cfg.isa( visitorHelper.BlockManager.TEMPORARY ) )
-    // {
-    //     console.log( `Replacing temporary ${bod.cfg} with permanent labeled statement ${statement}` );
-    //     bod.cfg.replace( statement );
-    // }
-    // else
-        bod.cfg = statement;
+    node.cfg = statement;
 
     return visitorHelper.flatWalk( statement, node.body, visitorHelper );
 }
@@ -258,24 +229,6 @@ function ForStatement( node, visitorHelper )
     }
 
     return cont;
-
-
-    // const { newBlock, block } = visitorHelper;
-    //
-    // let init   = node.init && newBlock().from( block ).by( 'For.init' ),
-    //     test   = node.test && newBlock().from( init ).as( visitorHelper.BlockManager.TEST ).by( 'For.test' ),
-    //     body   = newBlock().by( 'For.body' ),
-    //     update = node.update && newBlock().by( 'For.update' ),
-    //     cont   = newBlock().as( visitorHelper.BlockManager.CONVERGE ).by( 'For.conv' );
-    //
-    // test.whenTrue( body );
-    //
-    // if ( node.test ) test.whenFalse( cont );
-    // visitorHelper.addLoopTarget( update, cont );
-    // update.from( visitorHelper.flatWalk( body, node.body, visitorHelper ) ).to( test );
-    // visitorHelper.popTarget();
-    //
-    // return cont;
 }
 
 /**
@@ -344,8 +297,7 @@ function IfStatement( node, visitorHelper )
         .add( node.test ),
 
         consequent = visitorHelper.newBlock().by( 'If.cons' ),
-        alternate,
-        cont;
+        alternate;
         // cont       = visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE );
 
     test.whenTrue( consequent );
@@ -357,23 +309,9 @@ function IfStatement( node, visitorHelper )
     if ( node.alternate )
         alternate = visitorHelper.flatWalk( alternate, node.alternate, visitorHelper );
 
-    // if ( consequent ) cont.from( consequent );
-    // if ( alternate ) cont.from( alternate );
-    // if ( !consequent && !node.alternate ) test.whenFalse( cont );
-
-    // return [ cont ];
-
     if ( !node.alternate && consequent ) consequent.to( alternate );
 
-    // if ( !consequent && !node.alternate )
-    // {
-    //     const cont = visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE );
-    //     test.whenFalse( cont );
-    //     return [ cont ];
-    // }
-
     return [ consequent, alternate ];
-    // return alternate ? [ consequent, alternate ] : !consequent && !node.alternate ? [ visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE ).whenFalse( test ) ] : [ consequent ];
 }
 
 /**

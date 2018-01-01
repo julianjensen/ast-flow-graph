@@ -7,12 +7,10 @@
 "use strict";
 
 const
-    chalk              = require( 'chalk' ),
-    sprintf = require( 'sprintf-js' ),
     MAX_EDGES_TO_PRINT = 7,
     SPACE_PER_EDGE     = 4,
     LEFT_EDGES         = ' <-- ', // ' ←── ',
-    RIGHT_EDGES        = ' --> ', //' ──→ ',
+    RIGHT_EDGES        = ' --> ', // ' ──→ ',
     AST_NODES          = ' => ',
     TRUE_EDGE          = '+', // '✔',
     FALSE_EDGE         = '-', // '✖',
@@ -51,39 +49,12 @@ const
         white: clc.xterm( 255 )
     },
 
-    spr = {
-        LEFT_EDGES, RIGHT_EDGES, AST_NODES, TRUE_EDGE, FALSE_EDGE, START_NODE, EXIT_NODE, EMPTY
-    },
-    pleftEdges = "%s %(LEFT_EDGES)s  % 3s%s %(RIGHT_EDGES)s %s   [%s:%s]",
-
-    eyes               = require( 'eyes' ),
-    {
-        initialize,
-        liveOut,
-        compute_globals
-    }                  = require( './liveness' ),
+    vars               = require( './variables' ),
+    { assignment }     = require( './variable-helpers' ),
     EdgeList           = require( './edge-list' ),
     dot                = require( './dot' ),
     digits             = ( n, d = 2, pre = '', post = '' ) => `${pre}${n}`.padStart( d ) + post,
     { isArray: array } = Array,
-    dupes              = list => {
-        let dupeList = [];
-
-        for ( let i = 0; i < list.length; ++i )
-        {
-            const b = list[ i ];
-
-            for ( let j = i + 1; j < list.length; ++j )
-            {
-                const c = list[ j ];
-
-                if ( b.id === c.id )
-                    dupeList.push( b.id );
-            }
-        }
-
-        return dupeList.length ? dupeList : null;
-    },
     has                = ( list, b ) => !!list.find( lb => lb.id === b.id ),
     _add               = ( arr, n ) => {
         const exists = arr.find( b => b.id === n.id );
@@ -91,6 +62,9 @@ const
         return n;
     };
 
+/**
+ * @type {Iterable<CFGBlock>}
+ */
 class BlockManager
 {
     constructor()
@@ -113,27 +87,21 @@ class BlockManager
     }
 
     /**
+     *
+     * @param {Array<CFGBlock>} final
      * @param {CFGInfo} cfg
      */
-    finish( cfg )
+    finish( final, cfg )
     {
-        function check_dupes( block, message = 'pre-check' )
-        {
-            if ( dupes( block.succs ) )
-                console.error( error( `${message}: Successor dupes for ${block.id}: ${dupes( block.succs ).join( ', ' )}` ) );
-            if ( dupes( block.preds ) )
-                console.error( error( `${message}: Predecessor dupes for ${block.id}: ${dupes( block.preds ).join( ', ' )}` ) );
-        }
+        const ast = cfg.ast;
+
+        if ( final )
+            final.forEach( f => this.toExitNode( f ) );
 
         this.exitNode = this.block().as( BlockManager.EXIT );
         this.toExit.forEach( b => b.to( this.exitNode ) );
 
         let i;
-
-        for ( const block of this )
-        {
-            check_dupes( block );
-        }
 
         const
             packed = [];
@@ -158,11 +126,20 @@ class BlockManager
 
         BlockManager.blockId = this.size = this.blocks.length;
 
-        const scope = cfg.ast.escope.acquire( cfg.node );
+        this.vars = vars( this, ast, cfg.topScope );
 
-        initialize( scope );
-        liveOut( cfg );
-        compute_globals( this );
+        this.forEach( b => b.prepare( this.vars ) );
+
+        if ( /Function/.test( ast.root.type ) && ast.root.params && ast.root.params )
+        {
+            let fb = ast.root.cfg || this.blocks[ 0 ];
+            ast.root.params.forEach( pnode => assignment( ast, fb, pnode, () => {} ) );
+        }
+
+        this.forEach( block => ast.flat_walker( block.nodes, ( n, rec ) => assignment( ast, block, n, rec ) ) );
+
+        this.vars.finish();
+        this.vars.live_out();
     }
 
     /**
@@ -171,6 +148,20 @@ class BlockManager
     forEach( fn )
     {
         this.blocks.forEach( ( b, i, bl ) => b && fn( b, i, bl ) );
+    }
+
+    map( fn )
+    {
+        return this.blocks.map( fn );
+    }
+
+    /**
+     * @param {number}  index
+     * @return {CFGBlock}
+     */
+    get( index )
+    {
+        return this.blocks[ index ];
     }
 
     /**
@@ -187,7 +178,7 @@ class BlockManager
 
     toString()
     {
-        return this.blocks.map( b => `${b}` ).join( '\n' ); // + `\n\n${this.edges}\n`;
+        return this.blocks.map( b => `${b}` ).join( '\n' );
     }
 
     toTable()
@@ -248,8 +239,8 @@ class CFGBlock
 {
     constructor( edges )
     {
+        // To prevent edges from showing up when doing `console.log` on these blocks
         Object.defineProperty( this, 'edges', { value: edges, enumerable: false } );
-        // this.edges = edges;
 
         this.id = BlockManager.blockId++;
         /** @type {Array<AnnotatedNode|BaseNode|Node>} */
@@ -266,26 +257,24 @@ class CFGBlock
         /** @type {CFGBlock} */
         this.jumpFalse = null;
 
-        this.ueVar      = null;
-        this.varKill    = null;
-        this.notVarKill = null;
-        this.liveOut    = null;
-        this.createdBy  = '';
-        this.varList    = [];
-        this.phi        = {};
+        this.createdBy = '';
+        this.scopes    = [];
     }
 
-    hasPhi( name )
+    prepare( vars )
     {
-        return this.phi.hasOwnProperty( name );
+        this.vars = vars;
     }
 
-    addPhi( name, defBlock )
+    /**
+     * @param {string} name     - Variable name
+     * @param {string} type     - Either 'use' or 'def'
+     * @param index             - AST node index
+     * @param {boolean} isDecl  - If this is a declaration, it may shadow a similarly named variable in an outer scope
+     */
+    add_var( name, type, index, isDecl )
     {
-        if ( !this.hasPhi( name ) )
-            this.phi[ name ] = [ defBlock ];
-        else
-            this.phi[ name ].push( defBlock );
+        this.vars.add_var( this, { name, type, index, isDecl } );
     }
 
     /**
@@ -507,7 +496,7 @@ class CFGBlock
 
         this.succs.forEach( s => {
             if ( s.id !== oldId )
-                this.edges.replace( oldId, s.id, newId, s.id )
+                this.edges.replace( oldId, s.id, newId, s.id );
         } );
 
         return affectedBlocks;
@@ -529,7 +518,6 @@ class CFGBlock
         if ( this.preds.length === 0 && this.succs.length === 0 ) force = true;
 
         if ( !force && ( this.nodes.length || this.isa( BlockManager.START ) || this.isa( BlockManager.EXIT ) ) ) return false;
-        // if ( !force && ( this.nodes.length || this.isa( BlockManager.START ) || this.isa( BlockManager.EXIT ) || this.isa( BlockManager.TEST ) ) ) return false;
 
         if ( this.succs.some( s => s === this ) ) return false;
 
@@ -636,9 +624,18 @@ class CFGBlock
         if ( this.nodes.length === 0 ) return '';
 
         const
-            f                                                                  = this.first() || {},
-            l                                                                  = this.last() || {},
-            { start: { line: start = 0 } } = f.loc, { end: { line: end = 0 } } = l.loc;
+            f = this.first() || {},
+            l = this.last() || {},
+            {
+                start: {
+                           line: start = 0
+                       }
+            } = f.loc,
+            {
+                end: {
+                         line: end = 0
+                     }
+            } = l.loc;
 
         if ( start === end )
             return `:${start}`;
@@ -661,9 +658,12 @@ class CFGBlock
             ex      = this.type === BlockManager.EXIT ? EXIT_NODE : ' ',
             nodes   = this.nodes.length ? AST_NODES + this.nodes.map( n => n.type + '(' + n.index + ')' ).join( ', ' ) : '',
             lines   = this.lines(),
-            liveOut = this.liveOut.size ? '\n    live: ' + [ ...this.liveOut ].join( ', ' ) : '';
+            self    = this.vars.get( this ),
+            lo      = self.liveOut,
+            _phi    = self.phi,
+            liveOut = lo && lo.size ? '\n    live: ' + [ ...lo ].join( ', ' ) : '';
 
-        let phi = Object.keys( this.phi ).join( ', ' );
+        let phi = Object.keys( _phi ).join( ', ' );
 
         if ( phi ) phi = `\n     phi: ${phi}`;
 
@@ -675,8 +675,8 @@ class CFGBlock
     split_by( arr, chunkSize )
     {
         let offset = 0,
-            lng = arr.length,
-            out = [];
+            lng    = arr.length,
+            out    = [];
 
         while ( offset < lng )
         {
@@ -689,7 +689,7 @@ class CFGBlock
 
     /**
      * Headers are
-     * TYPE / LINES / LEFT EDGES / NODE / RIGHT EDGES / CREATED BY / LIVEOUT / PHI / AST
+     * TYPE / LINES / LEFT EDGES / NODE / RIGHT EDGES / CREATED BY / LIVEOUT / UE / KILL / PHI / AST
      */
     toRow()
     {
@@ -703,9 +703,11 @@ class CFGBlock
             digits( this.id, '', '' ),
             this.str_edges( this.succs, '', '' ),
             this.createdBy || '',
-            toStrs( this.split_by( [ ...this.liveOut ], 3 ) ),
-            this.split_by( Object.keys( this.phi ), 3 ).map( sect => sect.join( ' ' ) ).join( '\n' ),
-            this.nodes.length ? this.split_by( this.nodes.map( n => n.type + '(' + n.index + ')' ), 2 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : '',
+            toStrs( this.split_by( [ ...this.vars.get( this ).liveOut ], 1 ) ),
+            toStrs( this.split_by( [ ...this.vars.get( this ).ueVar ], 1 ) ),
+            toStrs( this.split_by( [ ...this.vars.get( this ).varKill ], 1 ) ),
+            this.split_by( [ ...this.vars.get( this ).phi.keys() ], 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ),
+            this.nodes.length ? this.split_by( this.nodes.map( n => n.type + '(' + n.index + ')' ), 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : ''
         ];
     }
 }

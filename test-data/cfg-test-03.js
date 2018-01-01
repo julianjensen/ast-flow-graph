@@ -1,10 +1,14 @@
 /** ******************************************************************************************************************
- * @file Describe what cfg-test-01 does.
+ * @file Describe what cfg-test-03 does.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
- * @date 27-Dec-2017
+ * @date 30-Dec-2017
  *********************************************************************************************************************/
 "use strict";
+
+function pp() {}
+const pp$1 = pp.prototype;
+const types = {};
 
 pp$1.parseClass = function( node, isStatement ) {
     var this$1 = this;

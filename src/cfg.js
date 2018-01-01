@@ -12,6 +12,8 @@ const
     defaultOptions = {
         loc: true,
         range: true,
+        comment: true,
+        tokens: true,
         ecmaVersion: 9,
         sourceType: 'module',
         ecmaFeatures: {
@@ -38,7 +40,7 @@ class CFG
 
     toString()
     {
-        return this.cfgs.map( b => `${b}` ).join( '\n\n' ); // .name}:${b.lines[ 0 ]}-${b.lines[ 1 ]}\n${b.bm}` ).join( '\n\n' );
+        return this.cfgs.map( b => `${b}` ).join( '\n\n' );
     }
 
     toTable()

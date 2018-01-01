@@ -7,11 +7,11 @@
 "use strict";
 
 const
-    _inspect                                     = require( 'util' ).inspect,
-    inspect                                      = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
-    CFG   = require( './src/cfg' ),
-    fs    = require( 'fs' ),
-    stdin = process.stdin;
+    _inspect = require( 'util' ).inspect,
+    inspect  = ( o, d ) => _inspect( o, { depth: typeof d === 'number' ? d : 2, colors: true } ),
+    CFG      = require( './index' ),
+    fs       = require( 'fs' ),
+    stdin    = process.stdin;
 
 let str = '';
 
