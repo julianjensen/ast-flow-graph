@@ -8,7 +8,7 @@
 
 const
     AST = require( './ast' ),
-    create_new_cfg = require( './cfg-leader' ),
+    create_new_cfg = require( './leader' ),
     defaultOptions = {
         loc: true,
         range: true,

@@ -61,6 +61,7 @@
         "escope": "^3.6.0",
         "espree": "^3.5.2",
         "estraverse": "^4.2.0",
+        "rocambole": "^0.7.0",
         "sprintf-js": "^1.1.1",
         "traversals": "^1.0.15",
         "typescript": "^2.6.2",

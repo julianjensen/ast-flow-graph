@@ -31,6 +31,7 @@
  * @property {Scope} [scope]
  * @property {string} [scopedName]
  * @property {number} [line]
+ * @property {boolean} [implied=false]
  */
 
 /**

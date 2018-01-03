@@ -29,7 +29,7 @@ class A
             v = u + c;
         }
 
-        z += u;
+        z = z + u;
         u = v + c;
 
         return z + u;

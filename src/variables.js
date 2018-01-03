@@ -16,13 +16,16 @@ const
         reverse_graph
     }             = require( 'dominators' ),
 
-    options = {
+    // { make_flow } = require( './utils' ),
+    options       = {
         ssaSource: true
     },
 
     union         = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
     _intersection = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
     intersection  = ( a, b ) => _intersection( ...( a.size < b.size ? [ a, b ] : [ b, a ] ) ),
+    subtract      = ( a, b ) => [ ...a ].reduce( ( newSet, name ) => b.has( name ) ? newSet : newSet.add( name ), new Set() ),
+
     /**
      *
      * @param {CFGBlock} block
@@ -60,12 +63,18 @@ function variables( bm, ast, topScope )
         /** @type {Set<string>} */
         globals      = new Set(),
         /** @type {Map<string,Set<number>>} */
-        defSet       = new Map();
+        defSet       = new Map(),
+        /** @type {Map<string, Set>} */
+        all          = new Map();
 
     let dom,
         idoms,
         frontiers,
-        domTree;
+        domTree,
+        preds,
+        postDoms,
+        postDomFrontiers;
+    // analyze;
 
     reverse_graph( blocks.map( b => b.succs ) ).forEach( ( p, i ) => blocks[ i ].preds = p );
 
@@ -85,8 +94,9 @@ function variables( bm, ast, topScope )
      * @param {string} type     - Either 'use' or 'def'
      * @param index             - AST node index
      * @param {boolean} isDecl  - If this is a declaration, it may shadow a similarly named variable in an outer scope
+     * @param {boolean} [implied=false]
      */
-    function add_var( _block, { name, type, index, isDecl } )
+    function add_var( _block, { name, type, index, isDecl, implied = false } )
     {
         /** @type {BlockThing} */
         const block = blocks[ _block.id ];
@@ -99,20 +109,22 @@ function variables( bm, ast, topScope )
 
         const
             node = ast.nodesByIndex[ index ],
-            va   = { name, type, index, isDecl, node, scope: node.scope };
+            va   = { name, type, index, isDecl, node, scope: node.scope, implied };
 
         block.varList.push( va );
 
         if ( !isDecl )
-        {
             _is_use( va );
-            return;
+        else
+        {
+            if ( !block.declNames.has( name ) )
+                block.declNames.add( name );
+
+            _is_decl( va );
         }
 
-        if ( !block.declNames.has( name ) )
-            block.declNames.add( name );
-
-        _is_decl( va );
+        if ( !all.has( va.scopedName || va.name ) )
+            all.set( va.scopedName || va.name, new Set() );
     }
 
     /**
@@ -176,6 +188,12 @@ function variables( bm, ast, topScope )
     {
         init();
 
+        // const
+        //     liveOuts = analyze( blocks.map( b => b.ueVar ), blocks.map( b => b.notVarKill ), [], 'uui', { adjacent: 'succs', direction: 'rpost' } );
+
+        // liveOuts.forEach( ( lo, i ) => blocks[ i ].liveOut = lo );
+
+        // 9780120884780
         let changed = true;
 
         while ( changed )
@@ -192,8 +210,6 @@ function variables( bm, ast, topScope )
 
         // Use iterated dominance frontiers to inserted phi functions.
         insert_phi();
-        // Rename all non-local variable according to SSA rules.
-        ssa_rename();
 
         // Print out the source code showing SSA names and phi functions, if requested.
         if ( options.ssaSource ) console.log( ast.as_source() );
@@ -294,19 +310,24 @@ function variables( bm, ast, topScope )
     function init()
     {
         const
-            seenUsed = new Set(),
-            used     = new Set(),
-            succs    = blocks.map( b => b.succs );
+            succs = blocks.map( b => b.succs );
+
 
         idoms     = iterative( succs );
         frontiers = frontiers_from_succs( succs, idoms );
         domTree   = create_dom_tree( idoms );
+
+        preds = reverse_graph( succs );
+        postDoms = iterative( preds );
+        postDomFrontiers = frontiers_from_succs( preds, postDoms );
 
         dom = make_dom( {
             nodes: succs,
             idoms,
             frontiers
         } );
+
+        // analyze = make_flow( blocks, idoms ).analyze;
 
         for ( const block of blocks )
         {
@@ -317,16 +338,10 @@ function variables( bm, ast, topScope )
 
             for ( const v of block.varList )
             {
-
+                all.get( v.scopedName || v.name ).add( block.id );
 
                 if ( v.type === 'use' )
                 {
-                    if ( !seenUsed.has( v.scopedName ) )
-                    {
-                        seenUsed.add( v.scopedName );
-                        used.add( v.scopedName );
-                    }
-
                     if ( !block.varKill.has( v.scopedName ) )
                     {
                         globals.add( v.scopedName );
@@ -336,14 +351,12 @@ function variables( bm, ast, topScope )
                 else
                 {
                     block.varKill.add( v.scopedName );
-                    used.delete( v.scopedName );
-                    seenUsed.add( v.scopedName );
                     if ( !defSet.has( v.scopedName ) ) defSet.set( v.scopedName, new Set() );
                     defSet.get( v.scopedName ).add( block.id );
                 }
             }
 
-            block.notVarKill = used;
+            block.notVarKill = subtract( new Set( [ ...all.keys() ] ), block.varKill ); // used;
             block.liveOut    = new Set();
         }
     }
@@ -354,16 +367,24 @@ function variables( bm, ast, topScope )
      */
     function insert_phi()
     {
+        for ( const [ name, blockSet ] of all )
+        {
+            if ( blockSet.size > 1 ) continue;
+            defSet.delete( name );
+        }
+
         for ( const [ name, blockSet ] of defSet )
         {
             dom.forIteratedDominanceFrontier( id => {
                 const block = blocks[ id ];
-
-                if ( !block.phi.has( name ) && ( block.ueVar.has( name ) || block.succs.some( bid => blocks[ bid ].ueVar.has( name ) ) ) )
+                if ( !block.phi.has( name ) )
                     block.phi.set( name, { phiName: name, args: [] } );
 
             }, [ ...blockSet ] );
         }
+
+        // Rename all non-local variable according to SSA rules.
+        ssa_rename();
     }
 
     /**
@@ -379,10 +400,11 @@ function variables( bm, ast, topScope )
              * @param {string} sname
              * @return {string}
              */
-            newName = function( sname ) {
+            newName = function( sname, node ) {
                 const i = this.counter++;
                 this.stack.push( i );
                 return sname + '@' + i;
+
             },
             /**
              * This returns the index on the top of the stack.
@@ -395,7 +417,7 @@ function variables( bm, ast, topScope )
             ssa     = {};
 
         // Reset everything to start with for each non-local variable
-        globals.forEach( name => ssa[ name ] = { counter: 0, stack: [], newName, top } );
+        [ ...defSet.keys() ].forEach( name => ssa[ name ] = { counter: 0, defs: [], stack: [], newName, top } );
 
         /**
          * Rename everything in this one block.
@@ -412,7 +434,7 @@ function variables( bm, ast, topScope )
              * @type {object<string,number>}
              */
             let popCounts = {};
-            globals.forEach( name => popCounts[ name ] = 0 );
+            [ ...defSet.keys() ].forEach( name => popCounts[ name ] = 0 );
 
             // First, rename the defintion that results from all (if any) phi functions
             // So, `const x = φ( x, x )` becomes `const x@1 = φ( x, x )`, if our current index was `1`.
@@ -420,7 +442,7 @@ function variables( bm, ast, topScope )
             {
                 popCounts[ name ]++;
 
-                newPhi.set( name, { phiName: ssa[ name ].newName( name ), args } );
+                newPhi.set( name, { phiName: ssa[ name ].newName( name, block.block.first ), args } );
             }
 
             block.phi = newPhi;
@@ -428,20 +450,20 @@ function variables( bm, ast, topScope )
             // Rename all variable references, both 'use' and 'def'
             for ( const va of block.varList )
             {
-                if ( !globals.has( va.scopedName ) ) continue;
+                if ( !defSet.has( va.scopedName ) ) continue;
 
                 if ( va.type === 'use' )
                 {
                     // Rename uses to the last definition name
                     va.ssaName = va.scopedName + '@' + ssa[ va.scopedName ].top();
-                    ast.rename( va.node, va.ssaName );
+                    if ( !va.implied ) ast.rename( va.node, va.ssaName );
                 }
                 else
                 {
                     // Rename definitions to a new unique name
                     popCounts[ va.scopedName ]++;
                     va.ssaName = ssa[ va.scopedName ].newName( va.scopedName );
-                    ast.rename( va.node, va.ssaName );
+                    if ( !va.implied ) ast.rename( va.node, va.ssaName );
                 }
             }
 

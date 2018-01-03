@@ -11,11 +11,13 @@ const
     {
         get_from_function,
         isBaseFunction
-    }                  = require( './variable-helpers' ),
+    }                  = require( './ast-vars' ),
 
     escope             = require( 'escope' ),
     estraverse = require( 'estraverse' ),
     { traverse }       = estraverse,
+    // escodegen = require( 'escodegen' ),
+    // rocambole = require( 'rocambole' ),
 
     espree = require( 'espree' ),
     {
@@ -56,11 +58,18 @@ class AST
 
         this.addedLines = [];
         this.blankLines = [];
-        source.split( /\r?\n/ ).forEach( ( line, num ) => /^\s*$/.test( line ) && this.blankLines.push( num ) );
+        this.lines = source.split( /\r?\n/ );
+        this.lines.forEach( ( line, num ) => /^\s*$/.test( line ) && this.blankLines.push( num ) );
 
         this.source = source;
         this.renameOffsets = [];
         this.root = this.ast = espree.parse( source, options );
+
+        // rocambole.parseFn = espree.parse;
+        // rocambole.parseContext = espree;
+        // this.root = this.ast = rocambole.parse( source, options );
+        //
+        // console.log( escodegen.generate( this.ast, { comment: true, format: { preserveBlankLines: true }, verbatim: true } ) );
 
         this.nodesByIndex = [];
         this.functions    = [ get_from_function( this.ast ) ];
@@ -272,6 +281,13 @@ class AST
                 this.blankLines[ i ]++;
         }
 
+        let i = lineNumber;
+
+        while ( i < this.lines.length && !this.lines[ i ] ) i++;
+
+        if ( this.lines[ i ] )
+            sourceLine = this.lines[ i ].replace( /^(\s*).*$/, '$1' ) + sourceLine.replace( /^\s*(.*)$/, '$1' );
+
         this.addedLines.push( { lineNumber: lineNumber * 10000 + stableSort++, sourceLine } );
     }
 
@@ -279,8 +295,8 @@ class AST
     {
         assert( inode.type === Syntax.Identifier || inode.type === Syntax.MemberExpression, "Not an Identifier in rename, found: " + inode.type );
 
-        if ( inode.type === Syntax.MemberExpression )
-            inode = inode.property;
+        // if ( inode.type === Syntax.MemberExpression )
+        //     inode = inode.property;
 
         if ( !~this.renameOffsets.findIndex( ro => ro.start === inode.range[ 0 ] ) )
             this.renameOffsets.push( { start: inode.range[ 0 ], end: inode.range[ 1 ], newName } );
@@ -295,10 +311,7 @@ class AST
         let source = this.source;
 
         for ( const { start, end, newName } of offsets )
-        {
-            console.log( `start: ${start}, end: ${end}, current: ${source.substr( start, 4 )}` );
             source = source.substr( 0, start ) + newName + source.substr( end );
-        }
 
         const lines = source.split( /\r?\n/ );
 
@@ -308,6 +321,45 @@ class AST
 
         return lines.map( ( l, i ) => `${i.toString().padStart( 3 )}. ${l}` ).join( '\n' );
     }
+
+    // insert_phi( phiNames, phiArgs )
+    // {
+    //     const
+    //         declarator = ( lhs, rhs ) => ( {
+    //             "type": "VariableDeclarator",
+    //             "id":   { type: Syntax.Identifier, name: lhs, range: [ 0, lhs.length ] },
+    //             "init": {
+    //                 "type":      "CallExpression",
+    //                 "callee":    {
+    //                     "type": "Identifier",
+    //                     "name": "φ",
+    //                     "range": [ 0, 1 ]
+    //                 },
+    //                 "arguments": rhs.map( name => ( { type: Syntax.Identifier, name, range: [ 0, name.length ] } ) )
+    //             }
+    //         } ),
+    //         astNodes = {
+    //             "type":         "VariableDeclaration",
+    //             "declarations": [
+    //
+    //             ],
+    //             "kind":         "const"
+    //         };
+    //
+    //     for ( let n = 0; n < phiNames.length; n++ )
+    //     {
+    //         const decl = declarator( phiNames[ n ], phiArgs[ n ] );
+    //
+    //         decl.init.arguments.reduce( ( offset, dec ) => {
+    //             dec.range[ 0 ] = offset;
+    //             dec.range[ 1 ] += offset;
+    //             return dec.range[ 1 ] + 2;
+    //         }, 3 );
+    //
+    //
+    //     }
+    //
+    // }
 }
 
 module.exports = AST;

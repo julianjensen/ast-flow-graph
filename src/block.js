@@ -16,43 +16,7 @@ const
     FALSE_EDGE         = '-', // '✖',
     START_NODE         = '+', // '→',
     EXIT_NODE          = '$', // '⛔',
-    EMPTY              = '∅',
-    assert             = require( 'assert' ),
-    clc                = require( 'cli-color' ),
-    warn               = clc.xterm( 220 ),
-    error              = clc.xterm( 196 ),
-    info               = clc.xterm( 117 ),
 
-    colors             = {
-        dark:  {
-            green:  clc.xterm( 34 ),
-            blue:   clc.xterm( 26 ),
-            cyan:   clc.xterm( 45 ),
-            purple: clc.xterm( 57 ),
-            red:    clc.xterm( 161 ),
-            orange: clc.xterm( 167 ),
-            yellow: clc.xterm( 184 ),
-            pink:   clc.xterm( 170 ),
-            gray:   clc.xterm( 248 )
-        },
-        light: {
-            green:  clc.xterm( 118 ),
-            blue:   clc.xterm( 39 ),
-            cyan:   clc.xterm( 123 ),
-            purple: clc.xterm( 147 ),
-            red:    clc.xterm( 196 ),
-            orange: clc.xterm( 208 ),
-            yellow: clc.xterm( 226 ),
-            pink:   clc.xterm( 213 ),
-            gray:   clc.xterm( 252 )
-        },
-        white: clc.xterm( 255 )
-    },
-
-    vars               = require( './variables' ),
-    { assignment }     = require( './variable-helpers' ),
-    EdgeList           = require( './edge-list' ),
-    dot                = require( './dot' ),
     digits             = ( n, d = 2, pre = '', post = '' ) => `${pre}${n}`.padStart( d ) + post,
     { isArray: array } = Array,
     has                = ( list, b ) => !!list.find( lb => lb.id === b.id ),
@@ -62,177 +26,8 @@ const
         return n;
     };
 
-/**
- * @type {Iterable<CFGBlock>}
- */
-class BlockManager
-{
-    constructor()
-    {
-        this.edges = new EdgeList();
 
-        BlockManager.blockId = 0;
-        /** @type {CFGBlock[]} */
-        this.blocks = [];
-        this.startNode = this.block().as( BlockManager.START );
-        this.toExit    = [];
-    }
-
-    /**
-     * @param {CFGBlock} block
-     */
-    toExitNode( block )
-    {
-        this.toExit.push( block );
-    }
-
-    /**
-     *
-     * @param {Array<CFGBlock>} final
-     * @param {CFGInfo} cfg
-     */
-    finish( final, cfg )
-    {
-        const ast = cfg.ast;
-
-        if ( final )
-            final.forEach( f => this.toExitNode( f ) );
-
-        this.exitNode = this.block().as( BlockManager.EXIT );
-        this.toExit.forEach( b => b.to( this.exitNode ) );
-
-        let i;
-
-        const
-            packed = [];
-
-        for ( i = 0; i < BlockManager.blockId; i++ )
-        {
-            if ( this.blocks[ i ].eliminate() )
-                this.blocks[ i ] = null;
-        }
-
-        for ( i = 0; i < BlockManager.blockId; i++ )
-        {
-            if ( this.blocks[ i ] )
-            {
-                this.blocks[ i ].renumber( i, packed.length );
-                this.blocks[ i ].id = packed.length;
-                packed.push( this.blocks[ i ] );
-            }
-        }
-
-        this.blocks = packed;
-
-        BlockManager.blockId = this.size = this.blocks.length;
-
-        this.vars = vars( this, ast, cfg.topScope );
-
-        this.forEach( b => b.prepare( this.vars ) );
-
-        if ( /Function/.test( ast.root.type ) && ast.root.params && ast.root.params )
-        {
-            let fb = ast.root.cfg || this.blocks[ 0 ];
-            ast.root.params.forEach( pnode => assignment( ast, fb, pnode, () => {} ) );
-        }
-
-        this.forEach( block => ast.flat_walker( block.nodes, ( n, rec ) => assignment( ast, block, n, rec ) ) );
-
-        this.vars.finish();
-        this.vars.live_out();
-    }
-
-    /**
-     * @param {function} fn
-     */
-    forEach( fn )
-    {
-        this.blocks.forEach( ( b, i, bl ) => b && fn( b, i, bl ) );
-    }
-
-    map( fn )
-    {
-        return this.blocks.map( fn );
-    }
-
-    /**
-     * @param {number}  index
-     * @return {CFGBlock}
-     */
-    get( index )
-    {
-        return this.blocks[ index ];
-    }
-
-    /**
-     * @returns {CFGBlock}
-     */
-    block()
-    {
-        const block = new CFGBlock( this.edges );
-
-        this.blocks[ block.id ] = block;
-
-        return block;
-    }
-
-    toString()
-    {
-        return this.blocks.map( b => `${b}` ).join( '\n' );
-    }
-
-    toTable()
-    {
-        return this.blocks.map( b => b.toRow() );
-    }
-
-    /**
-     * @type {Iterable<CFGBlock>}
-     */
-    *[ Symbol.iterator ]()
-    {
-        for ( const block of this.blocks )
-        {
-            if ( !block ) continue;
-            yield block;
-        }
-    }
-
-    /**
-     * @param {string} title
-     */
-    create_dot( title )
-    {
-        return dot( {
-            title,
-            nodeLabels:    [ ...this ].map( b => b.graph_label() ),
-            edgeLabels:    [ ...this ].map( b => b.node_label() ),
-            start:         this.startNode.id,
-            end:           this.exitNode.id,
-            conditional:   this.edges.conditional(),
-            unconditional: this.edges.unconditional(),
-            blocks:        this.blocks
-        } );
-    }
-}
-
-BlockManager.blockId = 0;
-
-BlockManager.TEST      = 'test';
-BlockManager.TRUE      = 'true';
-BlockManager.FALSE     = 'false';
-BlockManager.NORMAL    = 'normal';
-BlockManager.EXCEPTION = 'exception';
-BlockManager.CATCH     = 'catch';
-BlockManager.BREAK     = 'break';
-BlockManager.CONTINUE  = 'continue';
-BlockManager.LOOP      = 'loop';
-BlockManager.THROW     = 'throw';
-BlockManager.START     = 'start';
-BlockManager.EXIT      = 'exit';
-BlockManager.CONVERGE  = 'converge';
-BlockManager.TEMPORARY = 'temporary';
-BlockManager.DELETED   = 'deleted';
+let BlockManager;
 
 /** */
 class CFGBlock
@@ -258,7 +53,7 @@ class CFGBlock
         this.jumpFalse = null;
 
         this.createdBy = '';
-        this.scopes    = [];
+        this.scope     = null;
     }
 
     prepare( vars )
@@ -271,10 +66,19 @@ class CFGBlock
      * @param {string} type     - Either 'use' or 'def'
      * @param index             - AST node index
      * @param {boolean} isDecl  - If this is a declaration, it may shadow a similarly named variable in an outer scope
+     * @param {boolean} implied - Identifier part of a chain
      */
-    add_var( name, type, index, isDecl )
+    add_var( name, type, index, isDecl, implied = false )
     {
-        this.vars.add_var( this, { name, type, index, isDecl } );
+        this.vars.add_var( this, { name, type, index, isDecl, implied } );
+    }
+
+    /**
+     * @return {boolean}
+     */
+    isEmpty()
+    {
+        return this.nodes.length === 0;
     }
 
     /**
@@ -289,17 +93,7 @@ class CFGBlock
             cb = [ cb ];
 
         cb.forEach( block => {
-            if ( has( this.preds, block ) )
-            {
-                assert( has( block.succs, this ) );
-                return;
-            }
-            if ( has( block.succs, this ) )
-            {
-                assert( has( this.preds, block ) );
-                return;
-            }
-
+            if ( has( this.preds, block ) || has( block.succs, this ) ) return;
             this.edges.add( _add( this.preds, block ).id, _add( block.succs, this ).id, BlockManager.NORMAL );
         } );
 
@@ -327,16 +121,7 @@ class CFGBlock
             cb = [ cb ];
 
         cb.forEach( block => {
-            if ( has( block.preds, this ) )
-            {
-                assert( has( this.succs, block ) );
-                return;
-            }
-            if ( has( this.succs, block ) )
-            {
-                assert( has( block.preds, this ) );
-                return;
-            }
+            if ( has( block.preds, this ) || has( this.succs, block ) ) return;
             this.edges.add( _add( block.preds, this ).id, _add( this.succs, block ).id, BlockManager.NORMAL );
         } );
 
@@ -355,11 +140,13 @@ class CFGBlock
     remove_succ( kill )
     {
         this.remove_adjacent( kill, 1 );
+        return this;
     }
 
     remove_pred( kill )
     {
         this.remove_adjacent( kill, -1 );
+        return this;
     }
 
     remove_adjacent( kill, dir )
@@ -369,8 +156,8 @@ class CFGBlock
             remIndex         = list.findIndex( sb => sb === kill ),
             remRemIndex      = remote.findIndex( sb => sb === this );
 
-        assert( remIndex !== -1, `Removing non-existing ${dir > 0 ? 'successor' : 'predecessor'} ${kill.id} from ${this.id}` );
-        assert( remRemIndex !== -1, `Removing non-existing remote ref to self ${dir < 0 ? 'successor' : 'predecessor'} ${kill.id} from ${this.id}` );
+        // assert( remIndex !== -1, `Removing non-existing ${dir > 0 ? 'successor' : 'predecessor'} ${kill.id} from ${this.id}` );
+        // assert( remRemIndex !== -1, `Removing non-existing remote ref to self ${dir < 0 ? 'successor' : 'predecessor'} ${kill.id} from ${this.id}` );
 
         list.splice( remIndex, 1 );
         remote.splice( remRemIndex, 1 );
@@ -520,6 +307,8 @@ class CFGBlock
         if ( !force && ( this.nodes.length || this.isa( BlockManager.START ) || this.isa( BlockManager.EXIT ) ) ) return false;
 
         if ( this.succs.some( s => s === this ) ) return false;
+
+        this.as( BlockManager.DELETED );
 
         const types = {};
 
@@ -710,6 +499,55 @@ class CFGBlock
             this.nodes.length ? this.split_by( this.nodes.map( n => n.type + '(' + n.index + ')' ), 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : ''
         ];
     }
+
+    /**
+     * @param {BlockManager} bm
+     * @constructor
+     */
+    static referenceBlockManager( bm )
+    {
+        BlockManager = bm;
+    }
+
+    mark( rdf )
+    {
+        const
+            workList = [],
+            marks = [];     // marks.length === nodes.length
+
+        function isCritical( node )
+        {
+
+        }
+
+        // @todo assign each def/use to a top node in the flat list for the block: x <- y op z (we ignore any line that have no def/use)
+        this.nodes.forEach( ( node, i ) => {
+            if ( isCritical( node ) )
+            {
+                marks[ i ] = true;
+                workList[ i ].push( node );
+            }
+        } );
+
+        while ( workList.length )
+        {
+            // for every 'use' mark the corresponding 'def' op
+
+            // if ( this.isa( BlockManager.TEST ) )
+            // for every block in post dominance frontier of this
+            // i.e. rdf.forEach( b => mark branch from this to b and add branch to workList )
+        }
+    }
+
+    sweep( marks )
+    {
+        this.nodes.forEach( ( op, i ) => {
+            if ( marks[ i ] ) return;
+
+            // if op is branch rewrite op to to jump to nearest marked post dom
+            // else if not a jump delete op
+        } );
+    }
 }
 
-module.exports = BlockManager;
+module.exports = CFGBlock;

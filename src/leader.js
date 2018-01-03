@@ -9,7 +9,7 @@
 
 const
     { as_table } = require( './dump' ),
-    BlockManager       = require( './cfg-block' ),
+    BlockManager       = require( './manager' ),
     visitors           = require( './visitors' ),
     { isArray: array } = Array;
 
@@ -28,7 +28,7 @@ function create_new_cfg( cfgInfo, ast )
     /** @type {CFGInfo} */
     let cfg = cfgInfo;
 
-    cfg.bm = new BlockManager();
+    cfg.bm = new BlockManager( ast );
 
     const
         visitorHelper = {
