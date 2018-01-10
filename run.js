@@ -34,48 +34,50 @@ function process_file( source )
         cfg = new CFG( source );
     // list = cfg.asList();
 
-    cfg.generate();
+    // cfg.generate();
 
-    console.log( cfg.toTable() );
+    // console.log( cfg.toTable() );
 
     // const
     //     de = cfg.by_name( 'pp$1.parseClass' ),
     //     dot = cfg.create_dot( de );
     // console.log( dot );
     // console.log( `scopes:\n`, cfg.scopes );
-    return;
+    // return;
 
     let hdr = `----------------------------------------------------------------------------------------------\nNEW FUNCTION: __FN__\n----------------------------------------------------------------------------------------------`;
 
     cfg.generate();
 
     cfg.forEach( ( c, i ) => {
-        const list = c.blockList;
 
         console.log( hdr.replace( '__FN__', c.name ) );
         // list.drop( c.entry );
 
-        const [ entry, exit ] = list.entryExit();
-        console.log( `entry: ${entry}, exit: ${exit}\n` );
+        // const [ entry, exit ] = list.entryExit();
+        // console.log( `entry: ${entry}, exit: ${exit}\n` );
 
-        const blocks = list.asArray.map( b => b.pre );
-        console.log( `blocks as list (${blocks.length}):`, blocks );
-        console.log( '' );
+        // const blocks = list.asArray.map( b => b.pre );
+        // console.log( `blocks as list (${blocks.length}):`, blocks );
+        // console.log( '' );
+        //
+        // const edges = list.edges;
+        // console.log( `block edges (${edges.length}):`, edges.map( e => `${e}` ) );
+        // console.log( '' );
+        //
+        // console.log( `${list}` );
+        // console.log( '' );
 
-        const edges = list.edges;
-        console.log( `block edges (${edges.length}):`, edges.map( e => `${e}` ) );
-        console.log( '' );
+        // const lines = list.lines();
 
-        console.log( `${list}` );
-        console.log( '' );
+        console.log( c.toTable() );
 
-        const lines = list.lines();
-
-        const dot = list.dot( c.name + `${lines ? ', lines: ' + lines : ''}` );
+        const dot = cfg.create_dot( c );
         console.log( `${dot}\n\n` );
         fs.writeFileSync( `./dots/${c.name}.dot`, dot );
     } );
-    console.log( `${cfg.scopes}` );
+
+    // console.log( `${cfg.scopes}` );
 
     // const
     //     render = 'walk',

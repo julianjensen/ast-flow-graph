@@ -94,7 +94,7 @@ class AST
             {
                 node.body.push( {
                     type: Syntax.EmptyStatement,
-                    loc: node.loc,
+                    loc:   node.loc,
                     range: node.range
                 } );
             }

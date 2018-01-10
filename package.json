@@ -20,7 +20,7 @@
         "version": "run-s -s changelog marktoc toc"
     },
     "repository": {
-        "type": "git",
+        "types": "git",
         "url": "git+https://github.com/julianjensen/cfg.git"
     },
     "keywords": [

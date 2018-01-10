@@ -9,6 +9,7 @@
 
 const
     { as_table } = require( './dump' ),
+    { Block, Edge } = require( './types' ),
     BlockManager       = require( './manager' ),
     visitors           = require( './visitors' ),
     { isArray: array } = Array;
@@ -17,8 +18,9 @@ const
 /**
  * @param {CFGInfo} CFGInfo
  * @param {AST} ast
+ * @param {CFGOptions} options
  */
-function create_new_cfg( cfgInfo, ast )
+function create_new_cfg( cfgInfo, ast, options )
 {
 
     ast.root = cfgInfo.node;
@@ -28,7 +30,7 @@ function create_new_cfg( cfgInfo, ast )
     /** @type {CFGInfo} */
     let cfg = cfgInfo;
 
-    cfg.bm = new BlockManager( ast );
+    cfg.bm = new BlockManager( ast, options );
 
     const
         visitorHelper = {
@@ -40,26 +42,27 @@ function create_new_cfg( cfgInfo, ast )
             toExit:       [],
             newBlock:     () => cfg.bm.block(),
             flatWalk:     ( b, n, vh ) => flat_walker( b, n, vh ),
-            scanWalk:     ( b, n, vh ) => scan_for_assignments( b, n, ast ),
             breakTargets: [],
             addBreakTarget( block )
             {
                 this.breakTargets.push( {
-                    type:       BlockManager.BREAK,
+                    type:      Edge.BREAK,
                     breakBlock: block
                 } );
             },
             addLoopTarget( lblock, bblock )
             {
+                cfg.bm.in_loop( lblock.id );
                 this.breakTargets.push( {
-                    type:       BlockManager.LOOP,
+                    type:      Edge.LOOP,
                     breakBlock: bblock,
                     loopBlock:  lblock
                 } );
             },
             popTarget()
             {
-                this.breakTargets.pop();
+                const popped = this.breakTargets.pop();
+                if ( popped.type === Edge.LOOP ) cfg.bm.out_loop( popped.loopBlock.id );
             },
             getBreakTarget()
             {
@@ -72,7 +75,7 @@ function create_new_cfg( cfgInfo, ast )
                 if ( i === 0 ) return null;
 
                 while ( i-- )
-                    if ( this.breakTargets[ i ].type === BlockManager.LOOP ) return this.breakTargets[ i ].loopBlock;
+                    if ( this.breakTargets[ i ].type === Edge.LOOP ) return this.breakTargets[ i ].loopBlock;
 
                 return null;
             }
@@ -101,16 +104,10 @@ function create_new_cfg( cfgInfo, ast )
 
 /**
  * @param {CFGBlock} block
- * @param {?(AnnotatedNode|Array<AnnotatedNode>)} nodes
- * @param {AST} ast
+ * @param {AnnotatedNode|Node|BaseNode|BlockStatement|Array<AnnotatedNode|Node|BaseNode|BlockStatement>} nodes
+ * @param {VisitorHelper} visitorHelper
+ * @return {CFGBlock}
  */
-function scan_for_assignments( block, nodes, ast )
-{
-    if ( !nodes ) return;
-
-    ast.flat_walker( nodes, ( n, rec ) => assignment( ast, block, n, rec ) );
-}
-
 function flat_walker( block, nodes, visitorHelper )
 {
     visitorHelper.block = block;
@@ -132,8 +129,8 @@ function flat_walker( block, nodes, visitorHelper )
             {
                 if ( !outputs.createdBy ) outputs.createdBy = 'CFG: ' + node.type;
 
-                if ( outputs.isa( BlockManager.CONVERGE ) )
-                    visitorHelper.block = outputs.isNotA( BlockManager.CONVERGE );
+                if ( outputs.isa( Block.CONVERGE ) )
+                    visitorHelper.block = outputs.not( Block.CONVERGE );
                 else
                     visitorHelper.block = visitorHelper.newBlock().from( outputs );
             }
@@ -148,8 +145,8 @@ function flat_walker( block, nodes, visitorHelper )
 
                 outputs.forEach( b => {
                     if ( !b.createdBy ) b.createdBy = 'AST: ' + ( b.first() ? b.first().type : 'none' );
-                    if ( b.isa( BlockManager.CONVERGE ) )
-                        visitorHelper.block = b.isNotA( BlockManager.CONVERGE );
+                    if ( b.isa( Block.CONVERGE ) )
+                        visitorHelper.block = b.not( Block.CONVERGE );
                 } );
                 visitorHelper.block = visitorHelper.newBlock().from( outputs );
             }

@@ -7,15 +7,23 @@
 "use strict";
 
 const
-    MAX_EDGES_TO_PRINT = 7,
-    SPACE_PER_EDGE     = 4,
-    LEFT_EDGES         = ' <-- ', // ' ←── ',
-    RIGHT_EDGES        = ' --> ', // ' ──→ ',
-    AST_NODES          = ' => ',
-    TRUE_EDGE          = '+', // '✔',
-    FALSE_EDGE         = '-', // '✖',
-    START_NODE         = '+', // '→',
-    EXIT_NODE          = '$', // '⛔',
+    assert             = require( 'assert' ),
+    {
+        outputOptions: {
+                           MAX_EDGES_TO_PRINT,
+                           SPACE_PER_EDGE,
+                           LEFT_EDGES,
+                           RIGHT_EDGES,
+                           AST_NODES,
+                           TRUE_EDGE,
+                           FALSE_EDGE,
+                           START_NODE,
+                           EXIT_NODE
+                       },
+
+        Block, Edge, enum_to_string
+    }                  = require( './types' ),
+    { flatten } = require( './utils' ),
 
     digits             = ( n, d = 2, pre = '', post = '' ) => `${pre}${n}`.padStart( d ) + post,
     { isArray: array } = Array,
@@ -26,18 +34,60 @@ const
         return n;
     };
 
+/**
+ * @typedef {object} EdgeInfo
+ * @property {function(number):EdgeInfo} as
+ * @property {function(number):EdgeInfo} not
+ * @property {function(number):boolean} isa
+ * @property {number} index
+ */
 
-let BlockManager;
+/**
+ * @param {number} index
+ * @param {number} _type
+ * @return {EdgeInfo}
+ */
+function blockEdge( index, _type = 0 )
+{
+    let type = _type,
+        self = {
+            as,
+            not,
+            isa,
+            get index() { return index; },
+            set index( i ) {
+                index = i;
+                return self;
+            }
+        };
+
+    function as( t )
+    {
+        type |= t;
+    }
+
+    function not( t )
+    {
+        type &= ~t;
+    }
+
+    function isa( t )
+    {
+        return type & t;
+    }
+
+    return self;
+}
 
 /** */
 class CFGBlock
 {
-    constructor( edges )
+    constructor( id )
     {
-        // To prevent edges from showing up when doing `console.log` on these blocks
-        Object.defineProperty( this, 'edges', { value: edges, enumerable: false } );
+        // // To prevent edges from showing up when doing `console.log` on these blocks
+        // Object.defineProperty( this, 'edges', { value: edges, enumerable: false } );
 
-        this.id = BlockManager.blockId++;
+        this.id = id;
         /** @type {Array<AnnotatedNode|BaseNode|Node>} */
         this.nodes = [];
         /** @type {Array<CFGBlock>} */
@@ -45,15 +95,38 @@ class CFGBlock
         /** @type {Array<CFGBlock>} */
         this.succs = [];
 
-        this.type = BlockManager.NORMAL;
+        /** @type {Array<EdgeInfo>} */
+        this.edgeInfo = [];
+        /** @type {?EdgeInfo} */
+        this.lastEdge = null;
 
-        /** @type {CFGBlock} */
-        this.jumpTrue = null;
-        /** @type {CFGBlock} */
-        this.jumpFalse = null;
+        this.types = Block.NORMAL;
 
         this.createdBy = '';
         this.scope     = null;
+    }
+
+    *edges()
+    {
+        const sl = this.succs.length;
+
+        for ( let i = 0; i < sl; i++ )
+        {
+            yield { from: this.id, to: this.succs[ i ].id, type: this.edgeInfo[ i ] };
+        }
+    }
+
+    get edgeIndices()
+    {
+        return this.succs.map( s => s.id );
+    }
+
+    _set_edge( index, type = 0 )
+    {
+        if ( typeof index !== 'number' )
+            index = this.succs.indexOf( index );
+
+        return this.edgeInfo[ index ] = blockEdge( index, type );
     }
 
     prepare( vars )
@@ -67,10 +140,11 @@ class CFGBlock
      * @param index             - AST node index
      * @param {boolean} isDecl  - If this is a declaration, it may shadow a similarly named variable in an outer scope
      * @param {boolean} implied - Identifier part of a chain
+     * @param {boolean} renameTarget
      */
-    add_var( name, type, index, isDecl, implied = false )
+    add_var( name, type, index, isDecl, implied = false, renameTarget = false ) // eslint-disable-line max-params
     {
-        this.vars.add_var( this, { name, type, index, isDecl, implied } );
+        this.vars.add_var( this, { name, type, index, isDecl, implied, renameTarget } );
     }
 
     /**
@@ -80,6 +154,7 @@ class CFGBlock
     {
         return this.nodes.length === 0;
     }
+
 
     /**
      * @param {CFGBlock|CFGBlock[]} cb
@@ -92,10 +167,7 @@ class CFGBlock
         if ( !array( cb ) )
             cb = [ cb ];
 
-        cb.forEach( block => {
-            if ( has( this.preds, block ) || has( block.succs, this ) ) return;
-            this.edges.add( _add( this.preds, block ).id, _add( block.succs, this ).id, BlockManager.NORMAL );
-        } );
+        cb.forEach( block => block.to( this ) );
 
         return this;
     }
@@ -113,7 +185,7 @@ class CFGBlock
      * @param {CFGBlock|CFGBlock[]} cb
      * @return {CFGBlock}
      */
-    child( cb )
+    to( cb )
     {
         if ( !cb ) return this;
 
@@ -121,61 +193,84 @@ class CFGBlock
             cb = [ cb ];
 
         cb.forEach( block => {
-            if ( has( block.preds, this ) || has( this.succs, block ) ) return;
-            this.edges.add( _add( block.preds, this ).id, _add( this.succs, block ).id, BlockManager.NORMAL );
+            this.lastEdge = this._set_edge( this.succs.length, Edge.NONE );
+            this.succs.push( block );
         } );
 
         return this;
     }
 
-    /**
-     * @param {CFGBlock|CFGBlock[]} cb
-     * @return {CFGBlock}
-     */
-    to( cb )
+    get_edge_by_type( type )
     {
-        return this.child( cb );
+        return this.edgeInfo.find( e => e.isa( type ) );
+    }
+
+    get_block_by_edge_type( type )
+    {
+        const e = this.get_edge_by_type( type );
+
+        if ( !e ) return null;
+
+        return this.succs[ this.edgeInfo.indexOf( e ) ];
+    }
+
+    get_edge_to_succ( succ )
+    {
+        return this.edgeInfo[ this.succs.indexOf( succ ) ];
+    }
+
+    remove_succs()
+    {
+        this.succs    = [];
+        this.edgeInfo = [];
     }
 
     remove_succ( kill )
     {
-        this.remove_adjacent( kill, 1 );
+        const index = this.succs.indexOf( kill );
+
+        if ( index === -1 ) return this;
+        // assert( index !== -1 );
+
+        this.succs.splice( index, 1 );
+        this.edgeInfo.splice( index, 1 );
+        this.edgeInfo.forEach( ( e, i ) => e.index = i );
         return this;
     }
 
     remove_pred( kill )
     {
-        this.remove_adjacent( kill, -1 );
+        const index = this.preds.indexOf( kill );
+
+        if ( index === -1 ) return this;
+
+        this.preds.splice( index, 1 );
         return this;
     }
 
-    remove_adjacent( kill, dir )
-    {
-        const
-            [ list, remote ] = dir > 0 ? [ this.succs, kill.preds ] : [ this.preds, kill.succs ],
-            remIndex         = list.findIndex( sb => sb === kill ),
-            remRemIndex      = remote.findIndex( sb => sb === this );
-
-        // assert( remIndex !== -1, `Removing non-existing ${dir > 0 ? 'successor' : 'predecessor'} ${kill.id} from ${this.id}` );
-        // assert( remRemIndex !== -1, `Removing non-existing remote ref to self ${dir < 0 ? 'successor' : 'predecessor'} ${kill.id} from ${this.id}` );
-
-        list.splice( remIndex, 1 );
-        remote.splice( remRemIndex, 1 );
-
-        if ( dir > 0 )
-            this.edges.delete( this.id, kill.id );
-        else
-            this.edges.delete( kill.id, this.id );
-    }
-
     /**
-     * @param {string} nodeType
+     * @param {number} nodeType
      * @return {CFGBlock}
      */
     as( nodeType )
     {
-        this.type = nodeType;
+        if ( nodeType & Block.EXCLUSIVE )
+            this.types = ( this.types & ~Block.EXCLUSIVE ) | ( nodeType & Block.EXCLUSIVE );
 
+        this.types |= ( nodeType & ~Block.EXCLUSIVE );
+
+        return this;
+    }
+
+    edge_as( edgeType )
+    {
+        if ( this.lastEdge ) this.lastEdge.as( edgeType );
+        return this;
+    }
+
+    not( nodeType )
+    {
+        this.types &= ~nodeType;
         return this;
     }
 
@@ -187,10 +282,7 @@ class CFGBlock
     {
         if ( !block ) return this;
 
-        this.to( block );
-        this.edges.type( this.id, block.id, BlockManager.TRUE );
-        this.jumpTrue = block;
-        this.type     = BlockManager.TEST;
+        this.to( block ).as( Block.TEST ).lastEdge.as( Edge.TRUE );
         return this;
     }
 
@@ -202,10 +294,7 @@ class CFGBlock
     {
         if ( !block ) return this;
 
-        this.to( block );
-        this.edges.type( this.id, block.id, BlockManager.FALSE );
-        this.jumpFalse = block;
-        this.type      = BlockManager.TEST;
+        this.to( block ).as( Block.TEST ).lastEdge.as( Edge.FALSE );
         return this;
     }
 
@@ -248,45 +337,12 @@ class CFGBlock
     }
 
     /**
-     * @param {string} typeName
+     * @param {number} typeName
      * @returns {boolean}
      */
     isa( typeName )
     {
-        return this.type === typeName;
-    }
-
-    isNotA( typeName )
-    {
-        if ( this.type === typeName )
-            this.type = BlockManager.NORMAL;
-
-        return this;
-    }
-
-    /**
-     * @param {number} oldId
-     * @param {number} newId
-     */
-    renumber( oldId, newId )
-    {
-        if ( oldId === newId ) return;
-
-        const affectedBlocks = this.preds.concat( this.succs );
-
-        this.preds.forEach( p => {
-            if ( p.id === oldId )
-                this.edges.replace( oldId, oldId, newId, newId );
-            else
-                this.edges.replace( p.id, oldId, p.id, newId );
-        } );
-
-        this.succs.forEach( s => {
-            if ( s.id !== oldId )
-                this.edges.replace( oldId, s.id, newId, s.id );
-        } );
-
-        return affectedBlocks;
+        return !!( this.types & typeName );
     }
 
     /**
@@ -297,74 +353,39 @@ class CFGBlock
      * 3. Remove this node from the predecessors of each successor
      * 4. In that same spot, insert the predecessors of this node
      *
-     * @param {boolean} [force=false]
-     * @return {boolean|Array<CFGBlock>}  - true if deleted
+     * @return {boolean}  - true if can be deleted
      */
-    eliminate( force = false )
+    eliminate()
     {
-        if ( this.preds.length === 0 && this.succs.length === 0 ) force = true;
+        const can = !this.nodes.length && !this.isa( Block.START ) && !this.isa( Block.EXIT ) && !this.succs.some( s => s === this );
 
-        if ( !force && ( this.nodes.length || this.isa( BlockManager.START ) || this.isa( BlockManager.EXIT ) ) ) return false;
+        if ( !can ) return false;
 
-        if ( this.succs.some( s => s === this ) ) return false;
+        const
+            liveSuccs = this.live_succs(),
+            livePreds = [];
 
-        this.as( BlockManager.DELETED );
-
-        const types = {};
-
-        this.succs.forEach( s => {
-            const ri = s.preds.findIndex( sp => sp === this );
-            if ( ri !== -1 )
-            {
-                s.preds.splice( ri, 1 );
-                this.edges.delete( this.id, s.id );
-            }
-        } );
-
-        this.preds.forEach( p => {
-            const ri = p.succs.findIndex( ps => ps === this );
-            if ( ri !== -1 )
-            {
-                p.succs.splice( ri, 1 );
-                types[ p.id ] = this.edges.delete( p.id, this.id ).type;
-            }
-        } );
-
-        this.preds.forEach( p => {
-            if ( this === p.jumpFalse && this.succs.length === 1 )
-                p.whenFalse( this.succs[ 0 ] );
-            else
-                p.to( this.succs );
-        } );
-
+        this.for_live_preds( p => livePreds.push( p ) && p.remove_succ( this ).to( liveSuccs ) );
+        liveSuccs.forEach( s => s.remove_pred( this ).from( livePreds ) );
+        this.as( Block.DELETED );
         return true;
     }
 
-    /**
-     *
-     * 1. Add our successors to the successors or the new node
-     * 2. For each of those successors, replace our august self in their predecessors with the upstart
-     * 3. Add our noble predeccesors to those of the pretender
-     * 4. For each of those exalted ancestors, replace our manifest heritage with that of the usurper
-     * 5. Finally, remove our sacred `id` and depart this world in peace to be collected with the rest of the garbage.
-     *
-     * @param {CFGBlock} block
-     */
-    replace( block )
+    for_live_preds( fn )
     {
-        for ( const s of this.succs )
-        {
-            this.remove_succ( s );
-            block.to( s );
-        }
+        this.preds.forEach( ( p, i ) => p.isa( Block.DELETED ) || fn( p, i ) );
+    }
 
-        for ( const p of this.preds )
-        {
-            this.remove_pred( p );
-            p.to( block );
-        }
+    live_succs()
+    {
+        const
+            live = _s => !_s.isa( Block.DELETED ) ? _s : _s.succs.length ? _s.succs.map( live ) : null;
+        // if ( !s.isa( Block.DELETED ) ) return s;
+        //
+        // if ( !s.succs.length ) return null;
 
-        // The id will be cleaned up by the `finish` pass in the manager
+
+        return flatten( this.succs.map( live ) ).filter( s => !!s );
     }
 
     /*****************************************************************************************************************
@@ -380,7 +401,7 @@ class CFGBlock
      */
     node_label()
     {
-        return ( this.type || ( this.first() ? this.first().type : 'no desc ' ) ) + this.lines();
+        return ( this.types || ( this.first() ? this.first().types : 'no desc ' ) ) + this.lines();
     }
 
     /**
@@ -391,21 +412,11 @@ class CFGBlock
     graph_label()
     {
         let
-            txt = this.type && this.type.length < 16 ? this.type.replace( 'consequent', 'cons' ) : '',
+            txt = this.types && this.types.length < 16 ? this.types.replace( 'consequent', 'cons' ) : '',
             ln  = this.nodes.length && this.nodes[ 0 ].loc && this.nodes[ 0 ].loc.start.line;
 
-        if ( this.type === 'start' || this.type === 'exit' ) txt += ':' + this.id;
+        if ( this.types === 'start' || this.types === 'exit' ) txt += ':' + this.id;
         return txt ? `${txt}:${this.id}@${ln}` : `unk:${this.id}@${ln || ''}`;
-    }
-
-    isBool()
-    {
-        let isTrue  = false,
-            isFalse = false;
-
-        this.preds.some( p => p.isa( BlockManager.TEST ) && ( ( isTrue = p.jumpTrue === this ) || ( isFalse = p.jumpFalse === this ) ) );
-
-        return isTrue ? TRUE_EDGE : isFalse ? FALSE_EDGE : '';
     }
 
     lines()
@@ -432,31 +443,51 @@ class CFGBlock
         return `:${start}-${end}`;
     }
 
-    str_edges( e, f, x )
+    pred_edge_types()
     {
-        let tf  = e.map( c => ( !f ? this.isBool() : '' ) + c.id ),
-            out = e.map( ( c, i ) => digits( tf[ i ], SPACE_PER_EDGE ) ).join( '' );
+        return this.preds.map( p => p.get_edge_to_succ( this ) ).map( e => e.isa( Edge.TRUE ) ? TRUE_EDGE : e.isa( Edge.FALSE ) ? FALSE_EDGE : '' );
+    }
 
-        return ( out && f ? f : '    ' ) + out[ f ? 'padEnd' : 'padStart' ]( MAX_EDGES_TO_PRINT * SPACE_PER_EDGE ) + ( out && x ? x : '    ' );
+    succ_edge_types()
+    {
+        return this.edgeInfo.map( e => e.isa( Edge.TRUE ) ? TRUE_EDGE : e.isa( Edge.FALSE ) ? FALSE_EDGE : '' );
     }
 
     toString()
     {
         const
-            st      = this.type === BlockManager.START ? START_NODE : '',
-            ex      = this.type === BlockManager.EXIT ? EXIT_NODE : ' ',
-            nodes   = this.nodes.length ? AST_NODES + this.nodes.map( n => n.type + '(' + n.index + ')' ).join( ', ' ) : '',
-            lines   = this.lines(),
-            self    = this.vars.get( this ),
-            lo      = self.liveOut,
-            _phi    = self.phi,
+            st    = this.isa( Block.START ) ? START_NODE : '',
+            ex    = this.isa( Block.EXIT ) ? EXIT_NODE : ' ',
+            nodes = this.nodes.length ? AST_NODES + this.nodes.map( n => n.type + '(' + n.index + ')' ).join( ', ' ) : '',
+            lines = this.lines();
+
+        let self,
+            lo,
+            _phi,
+            phi,
+            liveOut;
+
+        if ( this.vars )
+        {
+            self    = this.vars.get( this );
+            lo      = self.liveOut;
+            _phi    = self.phi;
             liveOut = lo && lo.size ? '\n    live: ' + [ ...lo ].join( ', ' ) : '';
+            phi = Object.keys( _phi ).join( ', ' );
+            if ( phi ) phi = `\n     phi: ${phi}`;
+        }
+        else
+        {
+            liveOut = '';
+            phi = '';
+        }
 
-        let phi = Object.keys( _phi ).join( ', ' );
+        let leftEdges  = this.pred_edge_types().map( ( c, i ) => c + digits( this.preds[ i ].id, SPACE_PER_EDGE ) ).join( '' ) + LEFT_EDGES,
+            rightEdges = RIGHT_EDGES + this.succ_edge_types().map( ( c, i ) => c + digits( this.succs[ i ].id, SPACE_PER_EDGE ) ).join( '' );
 
-        if ( phi ) phi = `\n     phi: ${phi}`;
+        leftEdges = leftEdges !== LEFT_EDGES ? leftEdges : ( ' '.repeat( SPACE_PER_EDGE - 1 ) + LEFT_EDGES );
 
-        return this.str_edges( this.preds, '', LEFT_EDGES ) + digits( this.id, SPACE_PER_EDGE, st, ex ) + this.str_edges( this.succs, RIGHT_EDGES, '' ) + ' [' + this.type + lines + '] ' +
+        return leftEdges + digits( this.id, SPACE_PER_EDGE, st, ex ) + rightEdges + ' [' + enum_to_string( Block, this.types ).join( ' ' ) + lines + '] ' +
                ( this.createdBy ? 'from ' + this.createdBy : '' ) +
                nodes + liveOut + phi;
     }
@@ -485,12 +516,15 @@ class CFGBlock
         const
             toStrs = arr => arr.map( grp => grp.join( ' ' ) ).join( '\n' );
 
+        let leftEdges  = this.pred_edge_types().map( ( c, i ) => digits( this.preds[ i ].id, SPACE_PER_EDGE, c, '' ) ).join( '' ),
+            rightEdges = this.succ_edge_types().map( ( c, i ) => digits( this.succs[ i ].id, SPACE_PER_EDGE, '', c ) ).join( '' );
+
         return [
-            this.type,
+            enum_to_string( Block, this.types ).join( '\n' ),
             this.lines().substr( 1 ),
-            this.str_edges( this.preds, '', '' ),
+            leftEdges,
             digits( this.id, '', '' ),
-            this.str_edges( this.succs, '', '' ),
+            rightEdges,
             this.createdBy || '',
             toStrs( this.split_by( [ ...this.vars.get( this ).liveOut ], 1 ) ),
             toStrs( this.split_by( [ ...this.vars.get( this ).ueVar ], 1 ) ),
@@ -500,20 +534,11 @@ class CFGBlock
         ];
     }
 
-    /**
-     * @param {BlockManager} bm
-     * @constructor
-     */
-    static referenceBlockManager( bm )
-    {
-        BlockManager = bm;
-    }
-
     mark( rdf )
     {
         const
             workList = [],
-            marks = [];     // marks.length === nodes.length
+            marks    = [];     // marks.length === nodes.length
 
         function isCritical( node )
         {

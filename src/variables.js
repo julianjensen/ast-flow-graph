@@ -7,6 +7,7 @@
 "use strict";
 
 const
+    assign = require( './utils' ).assign,
     { DFS }       = require( 'traversals' ),
     {
         iterative,
@@ -17,9 +18,6 @@ const
     }             = require( 'dominators' ),
 
     // { make_flow } = require( './utils' ),
-    options       = {
-        ssaSource: true
-    },
 
     union         = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
     _intersection = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
@@ -60,8 +58,6 @@ function variables( bm, ast, topScope )
         scopeToDecls = new Map(),
         /** @type {Array<BlockThing>} */
         blocks       = bm.map( blockVars ),
-        /** @type {Set<string>} */
-        globals      = new Set(),
         /** @type {Map<string,Set<number>>} */
         defSet       = new Map(),
         /** @type {Map<string, Set>} */
@@ -73,8 +69,13 @@ function variables( bm, ast, topScope )
         domTree,
         preds,
         postDoms,
-        postDomFrontiers;
+        postDomFrontiers,
+        options = {
+            ssaSource: true
+        };
     // analyze;
+
+    options = assign( {}, options, bm.options );
 
     reverse_graph( blocks.map( b => b.succs ) ).forEach( ( p, i ) => blocks[ i ].preds = p );
 
@@ -95,8 +96,9 @@ function variables( bm, ast, topScope )
      * @param index             - AST node index
      * @param {boolean} isDecl  - If this is a declaration, it may shadow a similarly named variable in an outer scope
      * @param {boolean} [implied=false]
+     * @param {boolean} [renameTarget=false]
      */
-    function add_var( _block, { name, type, index, isDecl, implied = false } )
+    function add_var( _block, { name, type, index, isDecl, implied = false, renameTarget } )
     {
         /** @type {BlockThing} */
         const block = blocks[ _block.id ];
@@ -109,7 +111,10 @@ function variables( bm, ast, topScope )
 
         const
             node = ast.nodesByIndex[ index ],
-            va   = { name, type, index, isDecl, node, scope: node.scope, implied };
+            va   = { name, type, index, isDecl, node, scope: node.scope, implied, renameTarget };
+
+        // if ( name === 'key' && ( node.loc.start.line === 59 || node.loc.start.line === 60 ) )
+        //     console.log( 'key:', va.node );
 
         block.varList.push( va );
 
@@ -343,10 +348,7 @@ function variables( bm, ast, topScope )
                 if ( v.type === 'use' )
                 {
                     if ( !block.varKill.has( v.scopedName ) )
-                    {
-                        globals.add( v.scopedName );
                         block.ueVar.add( v.scopedName );
-                    }
                 }
                 else
                 {
@@ -395,6 +397,12 @@ function variables( bm, ast, topScope )
     function ssa_rename()
     {
         const
+            renameList = new Map(),
+            astRename = ( node, va ) => {
+                if ( !renameList.has( node ) ) renameList.set( node, new Set() );
+                renameList.get( node ).add( va );
+                // console.log( `Added to rename list: "${va.name}" => "${va.ssaName}" @${va.node.type}:${va.node.loc.start.line}, type: ${va.type}` );
+            },
             /**
              * This function will return a new name for a variable by incremneting the index.
              * @param {string} sname
@@ -403,6 +411,7 @@ function variables( bm, ast, topScope )
             newName = function( sname, node ) {
                 const i = this.counter++;
                 this.stack.push( i );
+                this.nodes.push( node );
                 return sname + '@' + i;
 
             },
@@ -417,7 +426,7 @@ function variables( bm, ast, topScope )
             ssa     = {};
 
         // Reset everything to start with for each non-local variable
-        [ ...defSet.keys() ].forEach( name => ssa[ name ] = { counter: 0, defs: [], stack: [], newName, top } );
+        [ ...defSet.keys() ].forEach( name => ssa[ name ] = { counter: 0, defs: [], stack: [], nodes: [], newName, top } );
 
         /**
          * Rename everything in this one block.
@@ -456,14 +465,18 @@ function variables( bm, ast, topScope )
                 {
                     // Rename uses to the last definition name
                     va.ssaName = va.scopedName + '@' + ssa[ va.scopedName ].top();
-                    if ( !va.implied ) ast.rename( va.node, va.ssaName );
+                    astRename( va.node, va );
+                    // ast.rename( va.node, va.ssaName );
+                    // if ( !va.implied ) ast.rename( va.node, va.ssaName );
                 }
                 else
                 {
                     // Rename definitions to a new unique name
                     popCounts[ va.scopedName ]++;
-                    va.ssaName = ssa[ va.scopedName ].newName( va.scopedName );
-                    if ( !va.implied ) ast.rename( va.node, va.ssaName );
+                    va.ssaName = ssa[ va.scopedName ].newName( va.scopedName, va.node );
+                    astRename( va.node, va );
+                    // ast.rename( va.node, va.ssaName );
+                    // if ( !va.implied ) ast.rename( va.node, va.ssaName );
                 }
             }
 
@@ -495,6 +508,7 @@ function variables( bm, ast, topScope )
             for ( const [ name, count ] of Object.entries( popCounts ) )
             {
                 ssa[ name ].stack.length -= count;
+                ssa[ name ].nodes.length -= count;
             }
         }
 
@@ -523,13 +537,26 @@ function variables( bm, ast, topScope )
                     ast.add_line( line, '' );
             }
         }
+
+        for ( const [ node, vaSet ] of renameList )
+        {
+            const vas = [ ...vaSet ];
+
+            if ( vaSet.size === 1 )
+                ast.rename( node, vas[ 0 ].ssaName );
+            else
+            {
+                // console.log( `multi-names (${node.type}): [ "${vas.map( v => v.ssaName ).join( '" "' )}" ]` );
+                ast.rename( node, vas.sort( ( a, b ) => b.name.length - a.name.length )[ 0 ].ssaName );
+            }
+        }
     }
 
     return {
         add_var,
         live_out,
         finish,
-        get: b => blocks[ b.id ]
+        get: b => blocks.find( lb => lb.block === b )
     };
 }
 

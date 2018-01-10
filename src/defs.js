@@ -32,14 +32,16 @@
  * @property {string} [scopedName]
  * @property {number} [line]
  * @property {boolean} [implied=false]
+ * @property {boolean} [renameTarget=false]
  */
 
 /**
  * @typedef {object} SSAName
  * @property {number} counter
  * @property {Array<number>} stack
- * @property {function(string):string} newName
+ * @property {function(string, AnnotatedNode|Node|BaseNode):string} newName
  * @property {function():number} top
+ * @property {Array<AnnotatedNode|Node|BaseNode>} nodes
  */
 
 /**
@@ -73,7 +75,7 @@
  * @property {?CFGBlock} block
  * @property {function():CFGBlock} newBlock
  * @property {CFGBlock[]} toExit
- * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):CFGBlock} [flatWalk]
+ * @property {function(CFGBlock,AnnotatedNode|Array<AnnotatedNode>,VisitorHelper):CFGBlock} [flatWalk]
  * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):*} [scanWalk]
  * @property {CFGBlock[]} breakTargets
  * @property {function(CFGBlock):*} addBreakTarget
@@ -105,5 +107,9 @@
  * @property {number} level
  */
 
-
+/**
+ * @typedef {object} CFGOptions
+ * @property {boolean} ssaSource
+ * @property {object} parser
+ */
 
