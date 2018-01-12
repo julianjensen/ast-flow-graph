@@ -12,9 +12,9 @@
 
 /** */
 const
-    assert = require( 'assert' ),
+    assert          = require( 'assert' ),
     { Edge, Block } = require( './types' ),
-    list         = require( 'yallist' );
+    list            = require( 'yallist' );
 
 module.exports = {
     BlockStatement,
@@ -84,7 +84,8 @@ function to_label( node, vh, type, targets )
         if ( !block )
             throw new SyntaxError( `Statement '${type}' is not inside a breakable scope` );
 
-        block.from( vh.block.add( node ).as( type ).by( type ) );
+        vh.block.add( node ).to( block ).classify( block, type );
+
 
         return null;
     }
@@ -300,7 +301,6 @@ function IfStatement( node, visitorHelper )
 
         consequent = visitorHelper.newBlock().by( 'If.cons' ),
         alternate;
-        // cont       = visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE );
 
     test.whenTrue( consequent );
     consequent = visitorHelper.flatWalk( consequent, node.consequent, visitorHelper );
@@ -323,7 +323,7 @@ function IfStatement( node, visitorHelper )
  */
 function ReturnStatement( node, visitorHelper )
 {
-    visitorHelper.block.add( node );
+    visitorHelper.block.add( node ).defer_edge_type( Edge.RETURN );
     visitorHelper.toExit.push( visitorHelper.block );
 
     return null;
@@ -420,25 +420,25 @@ function ReturnStatement( node, visitorHelper )
  *             consequent
  * SWITCH           │
  *    │             v
- *    └──> TEST ──────────> BODY ──────────┐ break
+ *    └──> TEST ───────────> BODY ─────────┐ break
  *           │                │            │
  *        alt│              no│break       │
  *           │              no│body        │
  *           │                │            │
  *           V                V            │
  *         TEST ───────────> BODY ─────────┤ break
- *           │                  │          │
- *        alt│                no│break     │
- *           │                no│body      │
- *           │                  │          │
- *           │                  V          │
- *           │  DEFAULT ─────> BODY ───────┤ break (or not)
- *           │     ^            │          │
- *           │     │          no│break     │
- *           │   if│false     no│body      │
- *           │  and│default     │          │
- *           V     │            V          │
- *         TEST ─────────────> BODY ───────┤ break (or not)
+ *           │                │            │
+ *        alt│              no│break       │
+ *           │              no│body        │
+ *           │                │            │
+ *           │                V            │
+ *           │  DEFAULT ───> BODY ─────────┤ break (or not)
+ *           │     ^          │            │
+ *           │     │        no│break       │
+ *           │   if│false   no│body        │
+ *           │  and│default   │            │
+ *           V     │          V            │
+ *         TEST ───────────> BODY ─────────┤ break (or not)
  *               if│false                  │
  *           and no│default                │
  *                 v                       │

@@ -51,19 +51,6 @@ const
     };
 
 /**
- * @typedef {object} DotOptions
- * @property {string} title
- * @property {Array<string>} nodeLabels
- * @property {Array<string>} edgeLabels    // was graph_label
- * @property {number} [start]
- * @property {number} [end]
- * @property {Array<[ number, number ]>} conditional
- * @property {Array<[ number, number ]>} unconditional
- * @property {object} [dotOptions={}]
- * @property {CFGBlock[]} blocks
- */
-
-/**
  * @param {DotOptions} opts
  * @return {string}
  */
@@ -73,28 +60,28 @@ function dot( opts )
         {
             title,
             labels,
-            start = 0,
-            end = labels.length - 1,
+            start      = 0,
+            end        = labels.length - 1,
             dotOptions = {},
-            conditional: condEdges,
+            conditional:   condEdges,
             unconditional: uncondEdges,
             nodeLabels
-        } = opts,
+        }             = opts,
         /**
          * @param {Edge} edge
          * @return {string}
          */
-        formatEdge           = ( { from, to, type } ) => {
+        formatEdge    = ( { from, to, type } ) => {
             const
-                label        = type === 'normal' ? '' : type,
+                label        = type.toString(), // type === 'normal' ? '' : type,
                 escapedLabel = label && label.replace( /"/g, '\\"' ),
                 attributes   = label ? ` [label = "${escapedLabel}"]` : "";
 
             return `${from} -> ${to}${attributes}`;
         },
 
-        neat                 = a => Array.isArray( a ) ? `"${a.join( ', ' )}"` : `"${a}"`,
-        toStr                = ( o, eol = '' ) => {
+        neat          = a => Array.isArray( a ) ? `"${a.join( ', ' )}"` : `"${a}"`,
+        toStr         = ( o, eol = '' ) => {
             if ( !o ) return [];
             const strs = Object.entries( o ).map( ( [ name, value ] ) => `${name} = ${neat( value )}${eol}` );
 
@@ -103,7 +90,7 @@ function dot( opts )
             return strs;
         },
 
-        diffs                = o => {
+        diffs         = o => {
             if ( !o ) return null;
 
             const d = {
@@ -116,17 +103,17 @@ function dot( opts )
 
             return Object.keys( d ).length ? d : null;
         },
-        merge                = key => Object.assign( {}, defaultDotOptions[ key ], dotOptions[ key ] || {} ),
+        merge         = key => Object.assign( {}, defaultDotOptions[ key ], dotOptions[ key ] || {} ),
 
-        defaults             = toStr( defaultDotOptions.defaults, ';' ),
-        node                 = toStr( diffs( merge( 'node' ) ) ),
-        test                 = toStr( diffs( merge( 'test' ) ) ),
-        entry                = toStr( diffs( merge( 'entry' ) ) ),
-        exit                 = toStr( diffs( merge( 'exit' ) ) ),
-        unconditional        = toStr( diffs( merge( 'unconditional' ) ) ),
-        conditional          = toStr( diffs( merge( 'conditional' ) ) ),
+        defaults      = toStr( defaultDotOptions.defaults, ';' ),
+        node          = toStr( diffs( merge( 'node' ) ) ),
+        test          = toStr( diffs( merge( 'test' ) ) ),
+        entry         = toStr( diffs( merge( 'entry' ) ) ),
+        exit          = toStr( diffs( merge( 'exit' ) ) ),
+        unconditional = toStr( diffs( merge( 'unconditional' ) ) ),
+        conditional   = toStr( diffs( merge( 'conditional' ) ) ),
 
-        innerLines           = [ ...defaults ].concat( `labelloc="t";`, `label="${title}";`, `fontsize=30` );
+        innerLines    = [ ...defaults ].concat( `labelloc="t";`, `label="${title}";`, `fontsize=30` );
 
     if ( node ) innerLines.push( `node [${node}];` );
 

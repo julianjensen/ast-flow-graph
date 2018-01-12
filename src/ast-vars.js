@@ -7,9 +7,9 @@
 "use strict";
 
 const
-    assert = require( 'assert' ),
-    { Syntax } = require( 'espree' ),
-    { flatten } = require( './utils' ),
+    assert         = require( 'assert' ),
+    { Syntax }     = require( 'espree' ),
+    { flatten }    = require( './utils' ),
     isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression,
     circ           = { prop: () => circ, index: () => circ, assign: () => circ };
 
@@ -92,10 +92,10 @@ function from_assignment_pattern( node, type, rhs )
 {
     const
         objectName = me => me.object.type === Syntax.ThisExpression ? 'this' : me.object.type === Syntax.Super ? 'super' : me.object.type === Syntax.Identifier ? me.object.name : void 0,
-        qt = ( name, preName ) => {
+        qt         = ( name, preName ) => {
 
             return preName ? { type, names: [ preName, name ], index: node.index } : { type, names: [ name ], index: node.index };
-    };
+        };
 
     switch ( node.type )
     {
@@ -140,10 +140,6 @@ function from_assignment_pattern( node, type, rhs )
             if ( base && !node.computed )
             {
                 rhs.assign();
-                // return [
-                //     { type, names: [ base ], index: node.object.index },
-                //     { type, names: [ node.property.name ], index: node.property.index }
-                // ];
                 return qt( node.property.name, base );
             }
 
@@ -152,10 +148,6 @@ function from_assignment_pattern( node, type, rhs )
             if ( node.object.type === Syntax.Identifier && node.property.type === Syntax.Identifier )
             {
                 rhs.assign();
-                // return [
-                //     { type, names: [ node.object.name ], index: node.object.index },
-                //     { type, names: [ node.property.name ], index: node.property.index }
-                // ];
                 return qt( node.property.name, node.object.name );
             }
 
@@ -244,7 +236,9 @@ function rhs( block, start )
 
 function declarator( ast, block, node, recurse )
 {
-    let _rhs, lhs, rhsFunc = circ;
+    let _rhs,
+        lhs,
+        rhsFunc = circ;
 
     if ( node.id.type === Syntax.ObjectPattern || node.id.type === Syntax.ArrayPattern )
     {
@@ -272,7 +266,7 @@ function assignment_node( ast, block, node, recurse )
 {
     let lhs;
 
-    lhs     = from_assignment_pattern( node.left, 'def', circ );
+    lhs = from_assignment_pattern( node.left, 'def', circ );
     if ( node.operator !== '=' )
         determine_read_write( block, lhs, lhs );
     else
@@ -303,29 +297,14 @@ function assignment( ast, block, node, recurse )
 
         case Syntax.VariableDeclarator:
             return declarator( ast, block, node, recurse );
-            // rhsFunc = rhs( block, node.init );
-            // lhs = from_assignment_pattern( node.id, 'def', rhsFunc );
-            // determine_read_write( block, lhs, void 0, true );
-            //
-            // if ( rhsFunc === circ ) ast.call_visitors( node.init, recurse );
-            // break;
 
         case Syntax.AssignmentPattern:
         case Syntax.AssignmentExpression:
             return assignment_node( ast, block, node, recurse );
-            // rhsFunc = rhs( block, node.right );
-            // lhs = from_assignment_pattern( node.left, 'def', rhsFunc );
-            // if ( node.type === Syntax.AssignmentExpression && node.operator !== '=' )
-            //     determine_read_write( block, lhs, lhs );
-            // else
-            //     determine_read_write( block, lhs );
-            //
-            // if ( rhsFunc === circ ) ast.call_visitors( node.right, recurse );
-            // break;
 
         case Syntax.UpdateExpression:
-            lhs        = from_assignment_pattern( node.argument, 'def', circ );
-            let self   = Object.assign( {}, lhs );
+            lhs       = from_assignment_pattern( node.argument, 'def', circ );
+            let self  = Object.assign( {}, lhs );
             self.type = 'use';
             determine_read_write( block, self );
             determine_read_write( block, lhs );
@@ -337,7 +316,7 @@ function assignment( ast, block, node, recurse )
             break;
 
         case Syntax.MemberExpression:
-            lhs     = from_assignment_pattern( node, 'use', circ );
+            lhs = from_assignment_pattern( node, 'use', circ );
             determine_read_write( block, lhs );
             break;
 
@@ -365,10 +344,10 @@ function determine_read_write( block, lhs, rhs, isDecl )
     if ( rhs ) rhs = flatten( rhs );
 
     const
-        def = va => def_one_var( block, va, isDecl ),
-        use = va => use_one_var( block, va ),
+        def      = va => def_one_var( block, va, isDecl ),
+        use      = va => use_one_var( block, va ),
         forceUse = va => use_one_var( block, va, true ),
-        mark = ( va, fn ) => {
+        mark     = ( va, fn ) => {
             if ( Array.isArray( va ) )
                 va.forEach( fn );
             else if ( va )
@@ -377,6 +356,7 @@ function determine_read_write( block, lhs, rhs, isDecl )
 
     if ( impliedRead )
         mark( lhs, forceUse );
+
     mark( lhs, def );
     mark( rhs, use );
 }
@@ -410,7 +390,7 @@ function def_one_var( block, va, isDecl )
     if ( va.type === 'use' ) return use_one_var( block, va );
 
     const
-        defName = va.names.pop(),
+        defName  = va.names.pop(),
         useNames = va.names;
 
     if ( useNames.length )

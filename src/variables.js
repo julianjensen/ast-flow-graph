@@ -7,7 +7,7 @@
 "use strict";
 
 const
-    assign = require( './utils' ).assign,
+    assign        = require( './utils' ).assign,
     { DFS }       = require( 'traversals' ),
     {
         iterative,
@@ -16,8 +16,6 @@ const
         create_dom_tree,
         reverse_graph
     }             = require( 'dominators' ),
-
-    // { make_flow } = require( './utils' ),
 
     union         = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
     _intersection = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
@@ -73,7 +71,6 @@ function variables( bm, ast, topScope )
         options = {
             ssaSource: true
         };
-    // analyze;
 
     options = assign( {}, options, bm.options );
 
@@ -112,9 +109,6 @@ function variables( bm, ast, topScope )
         const
             node = ast.nodesByIndex[ index ],
             va   = { name, type, index, isDecl, node, scope: node.scope, implied, renameTarget };
-
-        // if ( name === 'key' && ( node.loc.start.line === 59 || node.loc.start.line === 60 ) )
-        //     console.log( 'key:', va.node );
 
         block.varList.push( va );
 
@@ -198,7 +192,6 @@ function variables( bm, ast, topScope )
 
         // liveOuts.forEach( ( lo, i ) => blocks[ i ].liveOut = lo );
 
-        // 9780120884780
         let changed = true;
 
         while ( changed )
@@ -322,8 +315,8 @@ function variables( bm, ast, topScope )
         frontiers = frontiers_from_succs( succs, idoms );
         domTree   = create_dom_tree( idoms );
 
-        preds = reverse_graph( succs );
-        postDoms = iterative( preds );
+        preds            = reverse_graph( succs );
+        postDoms         = iterative( preds );
         postDomFrontiers = frontiers_from_succs( preds, postDoms );
 
         dom = make_dom( {
@@ -398,7 +391,7 @@ function variables( bm, ast, topScope )
     {
         const
             renameList = new Map(),
-            astRename = ( node, va ) => {
+            astRename  = ( node, va ) => {
                 if ( !renameList.has( node ) ) renameList.set( node, new Set() );
                 renameList.get( node ).add( va );
                 // console.log( `Added to rename list: "${va.name}" => "${va.ssaName}" @${va.node.type}:${va.node.loc.start.line}, type: ${va.type}` );
@@ -408,7 +401,7 @@ function variables( bm, ast, topScope )
              * @param {string} sname
              * @return {string}
              */
-            newName = function( sname, node ) {
+            newName    = function( sname, node ) {
                 const i = this.counter++;
                 this.stack.push( i );
                 this.nodes.push( node );
@@ -419,11 +412,11 @@ function variables( bm, ast, topScope )
              * This returns the index on the top of the stack.
              * @return {number}
              */
-            top     = function() {
+            top        = function() {
                 return this.stack.length ? this.stack[ this.stack.length - 1 ] : 0;
             },
             /** @type {object<string,SSAName>} */
-            ssa     = {};
+            ssa        = {};
 
         // Reset everything to start with for each non-local variable
         [ ...defSet.keys() ].forEach( name => ssa[ name ] = { counter: 0, defs: [], stack: [], nodes: [], newName, top } );

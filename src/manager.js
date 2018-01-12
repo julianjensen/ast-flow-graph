@@ -7,14 +7,15 @@
 "use strict";
 
 const
-    { warn, error }   = require( './utils' ),
-    { postOrder }     = require( 'traversals' ),
-    { reverse_graph } = require( 'dominators' ),
-    dot               = require( './dot' ),
-    vars              = require( './variables' ),
-    { assignment }    = require( './ast-vars' ),
-    CFGBlock          = require( './block' ),
-    { Block, Edge }   = require( './types' );
+    assert          = require( 'assert' ),
+    { warn, error } = require( './utils' ),
+    { postOrder }   = require( 'traversals' ),
+    dot             = require( './dot' ),
+    vars            = require( './variables' ),
+    { assignment }  = require( './ast-vars' ),
+    CFGBlock        = require( './block' ),
+    { Block, Edge } = require( './types' ),
+    Edges           = require( './edges' );
 
 /**
  * @type {Iterable<CFGBlock>}
@@ -28,6 +29,7 @@ class BlockManager
     constructor( ast, options )
     {
         BlockManager.blockId = 0;
+        this.edges           = new Edges( this );
         /** @type {CFGBlock[]} */
         this.blocks = [];
         this.loops     = [];
@@ -58,7 +60,11 @@ class BlockManager
             final.forEach( f => this.toExitNode( f ) );
 
         this.exitNode = this.block().as( Block.EXIT );
-        this.toExit.forEach( b => b.to( this.exitNode ) );
+        this.toExit.forEach( b => {
+            b.to( this.exitNode );
+            if ( b.deferredEdgeType )
+                b.classify( this.exitNode, b.deferredEdgeType );
+        } );
 
         this.clean();
 
@@ -111,7 +117,8 @@ class BlockManager
      */
     block()
     {
-        const block = new CFGBlock( BlockManager.blockId++ );
+        assert( this.edges );
+        const block = new CFGBlock( BlockManager.blockId++, this.edges );
 
         this.blocks[ block.id ] = block;
         if ( this.loops.length )
@@ -152,7 +159,7 @@ class BlockManager
             uncond = [];
 
         this.blocks.forEach( b => {
-            for ( const edge of b.edges() )
+            for ( const edge of this.edges.edges( b ) )
             {
                 if ( edge.type.isa( Edge.TRUE | Edge.FALSE | Edge.EXCEPTION ) )
                     cond.push( edge );
@@ -164,7 +171,6 @@ class BlockManager
         return dot( {
             title,
             nodeLabels:    [ ...this ].map( b => b.graph_label() ),
-            edgeLabels:    [ ...this ].map( b => b.node_label() ),
             start:         this.startNode.id,
             end:           this.exitNode.id,
             conditional:   cond,
@@ -175,7 +181,11 @@ class BlockManager
 
     pack( blocks )
     {
-        const packed = [];
+        const
+            offsets = [],
+            packed  = [];
+
+        let cur = 0;
 
         for ( let i = 0; i < BlockManager.blockId; i++ )
         {
@@ -184,44 +194,20 @@ class BlockManager
                 blocks[ i ].oldId = blocks[ i ].id;
                 blocks[ i ].id    = packed.length;
                 packed.push( blocks[ i ] );
+                cur = blocks[ i ].id - blocks[ i ].oldId;
             }
+
+            offsets.push( cur );
         }
 
-        this.calc_preds( packed );
+        this.edges.renumber( offsets );
         return packed;
-    }
-
-    calc_preds( blocks )
-    {
-        reverse_graph( blocks.map( b => b.edgeIndices ) ).forEach( ( preds, index ) => blocks[ index ].preds = preds.map( pi => blocks[ pi ] ) );
     }
 
     clean()
     {
         let changed = true,
             blocks  = this.blocks;
-
-        function remove_dupes( block )
-        {
-            let i = 0;
-
-            while ( i < block.succs.length )
-            {
-                const s = block.succs[ i ];
-
-                let j = i + 1;
-
-                while ( j < block.succs.length )
-                {
-                    if ( s.id === block.succs[ j ].id )
-                        block.remove_succ( block.succs[ j ] );
-                    else
-                        ++j;
-                }
-
-                ++i;
-            }
-        }
 
         /**
          * @param {number} blockIndex
@@ -255,7 +241,7 @@ class BlockManager
                     if ( block.eliminate() ) changed = true;
                 }
 
-                if ( !block.isa( Block.DELETED ) && succ.preds.length === 1 )
+                if ( !block.isa( Block.DELETED ) && !succ.isa( Block.DELETED ) && succ.preds.length === 1 )
                 {
                     if ( !succ.isEmpty() && succ.scope === block.scope )
                     {
@@ -267,6 +253,7 @@ class BlockManager
                         {
                             block.nodes = block.nodes.concat( on );
                             changed     = true;
+                            block.types |= ( succ.types & ~Block.DELETED );
                         }
                         else
                             succ.nodes = on;
@@ -276,14 +263,6 @@ class BlockManager
                     {
                         block.as( Block.TEST );
                         block.remove_succ( succ );
-                        const f = succ.get_block_by_edge_type( Edge.FALSE );
-                        if ( f )
-                            block.whenFalse( f );
-
-                        const t = succ.get_block_by_edge_type( Edge.TRUE );
-                        if ( t )
-                            block.whenTrue( t );
-
                         succ.eliminate();
                         changed = true;
                     }
@@ -291,19 +270,15 @@ class BlockManager
             }
         }
 
-        blocks.forEach( remove_dupes );
-        this.calc_preds( blocks );
         blocks.forEach( b => !b.succs.length && !b.preds.length && !b.isa( Block.START ) && !b.isa( Block.EXIT ) && b.as( Block.DELETED ) );
         blocks = this.pack( blocks );
 
         while ( changed )
         {
             changed = false;
-            // console.log( 'before:\n', blocks.map( b => `${b}` ).join( '\n' ) ); // blocks.map( ( b, i ) => [ i, b.isa( Block.DELETED ) ? 'KILL' : 'LIVE', `(${b.nodes.length})`, ...b.edgeIndices ] ) );
-            postOrder( blocks.map( b => b.edgeIndices ), pass );
 
-            blocks.forEach( remove_dupes );
-            // console.log( 'middle:\n', blocks.map( ( b, i ) => [ i, b.isa( Block.DELETED ) ? 'KILL' : 'LIVE', `(${b.nodes.length})`, ...b.edgeIndices ] ) );
+            postOrder( blocks.map( b => b.succs.map( s => s.id ) ), pass );
+
             if ( changed )
                 blocks = this.pack( blocks );
         }

@@ -7,19 +7,17 @@
 "use strict";
 
 const
-    assert = require( 'assert' ),
+    assert             = require( 'assert' ),
     {
         get_from_function,
         isBaseFunction
     }                  = require( './ast-vars' ),
 
     escope             = require( 'escope' ),
-    estraverse = require( 'estraverse' ),
+    estraverse         = require( 'estraverse' ),
     { traverse }       = estraverse,
-    // escodegen = require( 'escodegen' ),
-    // rocambole = require( 'rocambole' ),
 
-    espree = require( 'espree' ),
+    espree             = require( 'espree' ),
     {
         Syntax,
         VisitorKeys
@@ -58,23 +56,17 @@ class AST
 
         this.addedLines = [];
         this.blankLines = [];
-        this.lines = source.split( /\r?\n/ );
+        this.lines      = source.split( /\r?\n/ );
         this.lines.forEach( ( line, num ) => /^\s*$/.test( line ) && this.blankLines.push( num ) );
 
-        this.source = source;
+        this.source        = source;
         this.renameOffsets = [];
-        this.root = this.ast = espree.parse( source, options );
-
-        // rocambole.parseFn = espree.parse;
-        // rocambole.parseContext = espree;
-        // this.root = this.ast = rocambole.parse( source, options );
-        //
-        // console.log( escodegen.generate( this.ast, { comment: true, format: { preserveBlankLines: true }, verbatim: true } ) );
+        this.root          = this.ast = espree.parse( source, options );
 
         this.nodesByIndex = [];
         this.functions    = [ get_from_function( this.ast ) ];
 
-        let index = 0,
+        let index   = 0,
             labeled = [];
 
         this.traverse( ( node, parent ) => {
@@ -93,7 +85,7 @@ class AST
             if ( node.type === Syntax.BlockStatement && node.body.length === 0 )
             {
                 node.body.push( {
-                    type: Syntax.EmptyStatement,
+                    type:  Syntax.EmptyStatement,
                     loc:   node.loc,
                     range: node.range
                 } );
@@ -108,7 +100,7 @@ class AST
         } );
 
         this.traverse( node => {
-            const s = this.node_to_scope( node );
+            const s    = this.node_to_scope( node );
             node.level = stepsUp( s );
             node.scope = s;
         } );
@@ -116,14 +108,14 @@ class AST
         this.associate = new Map();
 
         labeled.forEach( node => {
-                let escope = this.node_to_scope( node ),
-                    assoc  = this.associate.get( escope );
+            let escope = this.node_to_scope( node ),
+                assoc  = this.associate.get( escope );
 
-                if ( !assoc ) this.associate.set( escope, assoc = { labels: [] } );
-                assoc.labels.push( {
-                    label: node.label.name,
-                    node:  node
-                } );
+            if ( !assoc ) this.associate.set( escope, assoc = { labels: [] } );
+            assoc.labels.push( {
+                label: node.label.name,
+                node:  node
+            } );
 
         } );
     }
@@ -295,9 +287,6 @@ class AST
     {
         assert( inode.type === Syntax.Identifier || inode.type === Syntax.MemberExpression, "Not an Identifier in rename, found: " + inode.type );
 
-        // if ( inode.type === Syntax.MemberExpression )
-        //     inode = inode.property;
-
         if ( !~this.renameOffsets.findIndex( ro => ro.start === inode.range[ 0 ] ) )
             this.renameOffsets.push( { start: inode.range[ 0 ], end: inode.range[ 1 ], newName } );
     }
@@ -321,45 +310,6 @@ class AST
 
         return lines.map( ( l, i ) => `${i.toString().padStart( 3 )}. ${l}` ).join( '\n' );
     }
-
-    // insert_phi( phiNames, phiArgs )
-    // {
-    //     const
-    //         declarator = ( lhs, rhs ) => ( {
-    //             "type": "VariableDeclarator",
-    //             "id":   { type: Syntax.Identifier, name: lhs, range: [ 0, lhs.length ] },
-    //             "init": {
-    //                 "type":      "CallExpression",
-    //                 "callee":    {
-    //                     "type": "Identifier",
-    //                     "name": "φ",
-    //                     "range": [ 0, 1 ]
-    //                 },
-    //                 "arguments": rhs.map( name => ( { type: Syntax.Identifier, name, range: [ 0, name.length ] } ) )
-    //             }
-    //         } ),
-    //         astNodes = {
-    //             "type":         "VariableDeclaration",
-    //             "declarations": [
-    //
-    //             ],
-    //             "kind":         "const"
-    //         };
-    //
-    //     for ( let n = 0; n < phiNames.length; n++ )
-    //     {
-    //         const decl = declarator( phiNames[ n ], phiArgs[ n ] );
-    //
-    //         decl.init.arguments.reduce( ( offset, dec ) => {
-    //             dec.range[ 0 ] = offset;
-    //             dec.range[ 1 ] += offset;
-    //             return dec.range[ 1 ] + 2;
-    //         }, 3 );
-    //
-    //
-    //     }
-    //
-    // }
 }
 
 module.exports = AST;

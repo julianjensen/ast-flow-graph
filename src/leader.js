@@ -8,8 +8,8 @@
 "use strict";
 
 const
-    { as_table } = require( './dump' ),
-    { Block, Edge } = require( './types' ),
+    { str_table }      = require( './dump' ),
+    { Block, Edge }    = require( './types' ),
     BlockManager       = require( './manager' ),
     visitors           = require( './visitors' ),
     { isArray: array } = Array;
@@ -23,8 +23,8 @@ const
 function create_new_cfg( cfgInfo, ast, options )
 {
 
-    ast.root = cfgInfo.node;
-    cfgInfo.ast = ast;
+    ast.root         = cfgInfo.node;
+    cfgInfo.ast      = ast;
     cfgInfo.topScope = ast.node_to_scope( ast.root );
 
     /** @type {CFGInfo} */
@@ -46,7 +46,7 @@ function create_new_cfg( cfgInfo, ast, options )
             addBreakTarget( block )
             {
                 this.breakTargets.push( {
-                    type:      Edge.BREAK,
+                    type:       Edge.BREAK,
                     breakBlock: block
                 } );
             },
@@ -54,7 +54,7 @@ function create_new_cfg( cfgInfo, ast, options )
             {
                 cfg.bm.in_loop( lblock.id );
                 this.breakTargets.push( {
-                    type:      Edge.LOOP,
+                    type:       Edge.LOOP,
                     breakBlock: bblock,
                     loopBlock:  lblock
                 } );
@@ -96,9 +96,9 @@ function create_new_cfg( cfgInfo, ast, options )
     else if ( final )
         final = [ final ];
 
-    cfg.bm.finish( final, cfg );
     cfg.toString = () => `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}\n${cfg.bm}`;
-    cfg.toTable = () => as_table( `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}`, [ "TYPE", "LINES", "LEFT EDGES", "NODE", "RIGHT EDGES", "CREATED BY", "LIVEOUT", "UE", "KILL", "PHI", "AST" ], cfg.bm.toTable() );
+    cfg.toTable  = () => str_table( `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}`, [ "TYPE", "LINES", "LEFT EDGES", "NODE", "RIGHT EDGES", "CREATED BY", "LIVEOUT", "UE", "KILL", "PHI", "AST" ], cfg.bm.toTable() );
+    cfg.bm.finish( final, cfg );
     return cfg;
 }
 

@@ -23,16 +23,9 @@ const
 
         Block, Edge, enum_to_string
     }                  = require( './types' ),
-    { flatten } = require( './utils' ),
 
     digits             = ( n, d = 2, pre = '', post = '' ) => `${pre}${n}`.padStart( d ) + post,
-    { isArray: array } = Array,
-    has                = ( list, b ) => !!list.find( lb => lb.id === b.id ),
-    _add               = ( arr, n ) => {
-        const exists = arr.find( b => b.id === n.id );
-        if ( !exists ) arr.push( n );
-        return n;
-    };
+    { isArray: array } = Array;
 
 /**
  * @typedef {object} EdgeInfo
@@ -42,91 +35,38 @@ const
  * @property {number} index
  */
 
-/**
- * @param {number} index
- * @param {number} _type
- * @return {EdgeInfo}
- */
-function blockEdge( index, _type = 0 )
-{
-    let type = _type,
-        self = {
-            as,
-            not,
-            isa,
-            get index() { return index; },
-            set index( i ) {
-                index = i;
-                return self;
-            }
-        };
-
-    function as( t )
-    {
-        type |= t;
-    }
-
-    function not( t )
-    {
-        type &= ~t;
-    }
-
-    function isa( t )
-    {
-        return type & t;
-    }
-
-    return self;
-}
-
 /** */
 class CFGBlock
 {
-    constructor( id )
+    /**
+     * @param {number} id
+     * @param {Edges} edges
+     */
+    constructor( id, edges )
     {
-        // // To prevent edges from showing up when doing `console.log` on these blocks
-        // Object.defineProperty( this, 'edges', { value: edges, enumerable: false } );
+        assert( edges );
+        // To prevent edges from showing up when doing `console.log` on these blocks
+        Object.defineProperty( this, 'edges', { value: edges, enumerable: false } );
 
         this.id = id;
         /** @type {Array<AnnotatedNode|BaseNode|Node>} */
         this.nodes = [];
-        /** @type {Array<CFGBlock>} */
-        this.preds = [];
-        /** @type {Array<CFGBlock>} */
-        this.succs = [];
 
-        /** @type {Array<EdgeInfo>} */
-        this.edgeInfo = [];
-        /** @type {?EdgeInfo} */
         this.lastEdge = null;
-
-        this.types = Block.NORMAL;
+        this.types    = Block.NORMAL;
 
         this.createdBy = '';
         this.scope     = null;
     }
 
-    *edges()
+    get succs()
     {
-        const sl = this.succs.length;
-
-        for ( let i = 0; i < sl; i++ )
-        {
-            yield { from: this.id, to: this.succs[ i ].id, type: this.edgeInfo[ i ] };
-        }
+        return this.edges.get_succs( this );
     }
 
-    get edgeIndices()
+    get preds()
     {
-        return this.succs.map( s => s.id );
-    }
-
-    _set_edge( index, type = 0 )
-    {
-        if ( typeof index !== 'number' )
-            index = this.succs.indexOf( index );
-
-        return this.edgeInfo[ index ] = blockEdge( index, type );
+        return this.edges.get_preds( this );
     }
 
     prepare( vars )
@@ -155,6 +95,11 @@ class CFGBlock
         return this.nodes.length === 0;
     }
 
+    classify( to, type )
+    {
+        this.edges.classify( this, to, type );
+        return this;
+    }
 
     /**
      * @param {CFGBlock|CFGBlock[]} cb
@@ -190,61 +135,22 @@ class CFGBlock
         if ( !cb ) return this;
 
         if ( !array( cb ) )
-            cb = [ cb ];
-
-        cb.forEach( block => {
-            this.lastEdge = this._set_edge( this.succs.length, Edge.NONE );
-            this.succs.push( block );
-        } );
+            this.lastEdge = this.edges.add( this, cb ).lastEdge;
+        else
+            cb.forEach( block => this.lastEdge = this.edges.add( this, block ).lastEdge );
 
         return this;
-    }
-
-    get_edge_by_type( type )
-    {
-        return this.edgeInfo.find( e => e.isa( type ) );
-    }
-
-    get_block_by_edge_type( type )
-    {
-        const e = this.get_edge_by_type( type );
-
-        if ( !e ) return null;
-
-        return this.succs[ this.edgeInfo.indexOf( e ) ];
-    }
-
-    get_edge_to_succ( succ )
-    {
-        return this.edgeInfo[ this.succs.indexOf( succ ) ];
     }
 
     remove_succs()
     {
-        this.succs    = [];
-        this.edgeInfo = [];
+        this.edges.get_succs( this ).forEach( s => this.edges.remove_succ( this, s ) );
+        return this;
     }
 
     remove_succ( kill )
     {
-        const index = this.succs.indexOf( kill );
-
-        if ( index === -1 ) return this;
-        // assert( index !== -1 );
-
-        this.succs.splice( index, 1 );
-        this.edgeInfo.splice( index, 1 );
-        this.edgeInfo.forEach( ( e, i ) => e.index = i );
-        return this;
-    }
-
-    remove_pred( kill )
-    {
-        const index = this.preds.indexOf( kill );
-
-        if ( index === -1 ) return this;
-
-        this.preds.splice( index, 1 );
+        this.edges.remove_succ( this, kill );
         return this;
     }
 
@@ -259,12 +165,14 @@ class CFGBlock
 
         this.types |= ( nodeType & ~Block.EXCLUSIVE );
 
+        if ( this.types & ~Block.NORMAL ) this.types &= ~Block.NORMAL;
+
         return this;
     }
 
-    edge_as( edgeType )
+    edge_as( edgeType, to = this.lastEdge.to )
     {
-        if ( this.lastEdge ) this.lastEdge.as( edgeType );
+        this.edges.classify( this, to, edgeType );
         return this;
     }
 
@@ -282,7 +190,8 @@ class CFGBlock
     {
         if ( !block ) return this;
 
-        this.to( block ).as( Block.TEST ).lastEdge.as( Edge.TRUE );
+        this.to( block ).as( Block.TEST );
+        this.edge_as( Edge.TRUE, block.id );
         return this;
     }
 
@@ -294,7 +203,8 @@ class CFGBlock
     {
         if ( !block ) return this;
 
-        this.to( block ).as( Block.TEST ).lastEdge.as( Edge.FALSE );
+        this.to( block ).as( Block.TEST );
+        this.edge_as( Edge.FALSE );
         return this;
     }
 
@@ -348,44 +258,21 @@ class CFGBlock
     /**
      * Remove itself if it's an empty node
      *
-     * 1. Remove this node from the successor list of each predecessor
-     * 2. In that same spot, insert the successors of this node
-     * 3. Remove this node from the predecessors of each successor
-     * 4. In that same spot, insert the predecessors of this node
-     *
      * @return {boolean}  - true if can be deleted
      */
     eliminate()
     {
-        const can = !this.nodes.length && !this.isa( Block.START ) && !this.isa( Block.EXIT ) && !this.succs.some( s => s === this );
+        if ( this.nodes.length || this.isa( Block.START ) || this.isa( Block.EXIT ) || this.succs.some( s => s === this ) ) return false;
 
-        if ( !can ) return false;
+        this.edges.retarget_multiple( this );
 
-        const
-            liveSuccs = this.live_succs(),
-            livePreds = [];
-
-        this.for_live_preds( p => livePreds.push( p ) && p.remove_succ( this ).to( liveSuccs ) );
-        liveSuccs.forEach( s => s.remove_pred( this ).from( livePreds ) );
         this.as( Block.DELETED );
         return true;
     }
 
-    for_live_preds( fn )
+    defer_edge_type( type )
     {
-        this.preds.forEach( ( p, i ) => p.isa( Block.DELETED ) || fn( p, i ) );
-    }
-
-    live_succs()
-    {
-        const
-            live = _s => !_s.isa( Block.DELETED ) ? _s : _s.succs.length ? _s.succs.map( live ) : null;
-        // if ( !s.isa( Block.DELETED ) ) return s;
-        //
-        // if ( !s.succs.length ) return null;
-
-
-        return flatten( this.succs.map( live ) ).filter( s => !!s );
+        this.deferredEdgeType = type;
     }
 
     /*****************************************************************************************************************
@@ -395,16 +282,6 @@ class CFGBlock
      *****************************************************************************************************************/
 
     /**
-     * For the edges.
-     *
-     * @return {string}
-     */
-    node_label()
-    {
-        return ( this.types || ( this.first() ? this.first().types : 'no desc ' ) ) + this.lines();
-    }
-
-    /**
      * For the vertices.
      *
      * @return {string}
@@ -412,11 +289,13 @@ class CFGBlock
     graph_label()
     {
         let
-            txt = this.types && this.types.length < 16 ? this.types.replace( 'consequent', 'cons' ) : '',
-            ln  = this.nodes.length && this.nodes[ 0 ].loc && this.nodes[ 0 ].loc.start.line;
+            txt = enum_to_string( Block, this.types ).join( '|' ),
+            lns = this.nodes.length && this.nodes[ 0 ].loc && this.nodes[ 0 ].loc.start.line,
+            lne = this.nodes.length && this.nodes[ this.nodes.length - 1 ].loc && this.nodes[ this.nodes.length - 1 ].loc.end.line,
+            ln  = lns === lne ? lns : lns + '-' + lne;
 
-        if ( this.types === 'start' || this.types === 'exit' ) txt += ':' + this.id;
-        return txt ? `${txt}:${this.id}@${ln}` : `unk:${this.id}@${ln || ''}`;
+        if ( this.isa( Block.START ) || this.isa( Block.EXIT ) ) txt += ':' + this.id;
+        return txt ? `${txt}:${this.id}@${ln}` : `NORMAL:${this.id}@${ln || ''}`;
     }
 
     lines()
@@ -445,12 +324,12 @@ class CFGBlock
 
     pred_edge_types()
     {
-        return this.preds.map( p => p.get_edge_to_succ( this ) ).map( e => e.isa( Edge.TRUE ) ? TRUE_EDGE : e.isa( Edge.FALSE ) ? FALSE_EDGE : '' );
+        return this.edges.pred_edges( this ).map( e => e.type.isa( Edge.TRUE ) ? TRUE_EDGE : e.type.isa( Edge.FALSE ) ? FALSE_EDGE : e.type.isa( ~Edge.CLEAR ) ? '*' : '' );
     }
 
     succ_edge_types()
     {
-        return this.edgeInfo.map( e => e.isa( Edge.TRUE ) ? TRUE_EDGE : e.isa( Edge.FALSE ) ? FALSE_EDGE : '' );
+        return this.edges.edges( this ).map( e => e.type.isa( Edge.TRUE ) ? TRUE_EDGE : e.type.isa( Edge.FALSE ) ? FALSE_EDGE : e.type.isa( ~Edge.CLEAR ) ? '*' : '' );
     }
 
     toString()
@@ -473,13 +352,13 @@ class CFGBlock
             lo      = self.liveOut;
             _phi    = self.phi;
             liveOut = lo && lo.size ? '\n    live: ' + [ ...lo ].join( ', ' ) : '';
-            phi = Object.keys( _phi ).join( ', ' );
+            phi     = Object.keys( _phi ).join( ', ' );
             if ( phi ) phi = `\n     phi: ${phi}`;
         }
         else
         {
             liveOut = '';
-            phi = '';
+            phi     = '';
         }
 
         let leftEdges  = this.pred_edge_types().map( ( c, i ) => c + digits( this.preds[ i ].id, SPACE_PER_EDGE ) ).join( '' ) + LEFT_EDGES,
@@ -516,8 +395,10 @@ class CFGBlock
         const
             toStrs = arr => arr.map( grp => grp.join( ' ' ) ).join( '\n' );
 
-        let leftEdges  = this.pred_edge_types().map( ( c, i ) => digits( this.preds[ i ].id, SPACE_PER_EDGE, c, '' ) ).join( '' ),
-            rightEdges = this.succ_edge_types().map( ( c, i ) => digits( this.succs[ i ].id, SPACE_PER_EDGE, '', c ) ).join( '' );
+        let preds      = this.preds,
+            succs      = this.succs,
+            leftEdges  = this.pred_edge_types().map( ( c, i ) => digits( preds[ i ].id, SPACE_PER_EDGE, c, '' ) ).join( '' ),
+            rightEdges = this.succ_edge_types().map( ( c, i ) => digits( succs[ i ].id, SPACE_PER_EDGE, '', c ) ).join( '' );
 
         return [
             enum_to_string( Block, this.types ).join( '\n' ),
@@ -526,10 +407,10 @@ class CFGBlock
             digits( this.id, '', '' ),
             rightEdges,
             this.createdBy || '',
-            toStrs( this.split_by( [ ...this.vars.get( this ).liveOut ], 1 ) ),
-            toStrs( this.split_by( [ ...this.vars.get( this ).ueVar ], 1 ) ),
-            toStrs( this.split_by( [ ...this.vars.get( this ).varKill ], 1 ) ),
-            this.split_by( [ ...this.vars.get( this ).phi.keys() ], 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ),
+            this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).liveOut ], 1 ) ) : '',
+            this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).ueVar ], 1 ) ) : '',
+            this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).varKill ], 1 ) ) : '',
+            this.vars ? this.split_by( [ ...this.vars.get( this ).phi.keys() ], 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : '',
             this.nodes.length ? this.split_by( this.nodes.map( n => n.type + '(' + n.index + ')' ), 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : ''
         ];
     }

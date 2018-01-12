@@ -113,3 +113,28 @@
  * @property {object} parser
  */
 
+/**
+ * @typedef {object} DotOptions
+ * @property {string} title
+ * @property {Array<string>} nodeLabels
+ * @property {Array<string>} edgeLabels    // was graph_label
+ * @property {number} [start]
+ * @property {number} [end]
+ * @property {Array<[ number, number ]>} conditional
+ * @property {Array<[ number, number ]>} unconditional
+ * @property {object} [dotOptions={}]
+ * @property {CFGBlock[]} blocks
+ */
+
+/**
+ * @typedef {object} DataFlow
+ * @property {function(Set, Set):Set} op1
+ * @property {function(Set, Set):Set} op2
+ * @property {function(Set, Set):Set} accumulate
+ * @property {string} adjacent
+ * @property {Set} constant1
+ * @property {Set} constant2
+ * @property {string} [direction]
+ * @property {boolean} [useDomTree=false]
+ */
+

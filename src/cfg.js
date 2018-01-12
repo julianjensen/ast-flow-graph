@@ -9,7 +9,7 @@
 const
     AST            = require( './ast' ),
     create_new_cfg = require( './leader' ),
-    assign = require( './utils' ).assign,
+    assign         = require( './utils' ).assign,
     defaultOptions = {
         ssaSource: false,
         parser:    {
@@ -35,13 +35,8 @@ class CFG
     constructor( source, options = defaultOptions )
     {
         this.options = assign( {}, defaultOptions, options );
-        // this.options              = Object.assign( {}, defaultOptions, options );
-        // this.options.parser       = Object.assign( {}, defaultOptions.parser, options.parser || {} );
-        // this.options.ecmaFeatures = Object.assign( {}, defaultOptions.parser.ecmaFeatures, options.parser.ecmaFeatures || {} );
-
-        this.ast    = new AST( source, this.options.parser );
-        this.cfgs   = [];
-        this.scopes = this.ast.escope;
+        this.ast     = new AST( source, this.options.parser );
+        this.cfgs    = [];
     }
 
     toString()
@@ -72,7 +67,7 @@ class CFG
             if ( !func )
                 return null;
 
-            return create_new_cfg( func, this.ast );
+            return create_new_cfg( func, this.ast, this.options );
         }
     }
 
