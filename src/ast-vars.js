@@ -7,45 +7,12 @@
 "use strict";
 
 const
-    assert = require( 'assert' ),
-    { Syntax } = require( 'espree' ),
+    assert         = require( 'assert' ),
+    { Syntax }     = require( 'espree' ),
+    { flatten }    = require( './utils' ),
     isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression,
     circ           = { prop: () => circ, index: () => circ, assign: () => circ };
 
-/**
- * @param {?Array} arr
- * @param {Array} [result=[]]
- * @param {Boolean} [deep=true]
- * @return {Array}
- */
-function flatten( arr, result = [], deep = true )
-{
-    if ( !Array.isArray( arr ) ) return [ arr ];
-
-    const
-        length = arr && arr.length;
-
-    if ( !length ) return result;
-
-    let index = -1;
-
-    while ( ++index < length )
-    {
-        const value = arr[ index ];
-
-        if ( Array.isArray( value ) )
-        {
-            if ( deep )
-                flatten( value, result, true );
-            else
-                result.push( ...value );
-        }
-        else
-            result[ result.length ] = value;
-    }
-
-    return result;
-}
 
 /**
  * @param {AnnotatedNode|BaseNode|Node} node
@@ -125,10 +92,10 @@ function from_assignment_pattern( node, type, rhs )
 {
     const
         objectName = me => me.object.type === Syntax.ThisExpression ? 'this' : me.object.type === Syntax.Super ? 'super' : me.object.type === Syntax.Identifier ? me.object.name : void 0,
-        qt = ( name, preName ) => {
+        qt         = ( name, preName ) => {
 
             return preName ? { type, names: [ preName, name ], index: node.index } : { type, names: [ name ], index: node.index };
-    };
+        };
 
     switch ( node.type )
     {
@@ -269,7 +236,9 @@ function rhs( block, start )
 
 function declarator( ast, block, node, recurse )
 {
-    let _rhs, lhs, rhsFunc = circ;
+    let _rhs,
+        lhs,
+        rhsFunc = circ;
 
     if ( node.id.type === Syntax.ObjectPattern || node.id.type === Syntax.ArrayPattern )
     {
@@ -297,7 +266,7 @@ function assignment_node( ast, block, node, recurse )
 {
     let lhs;
 
-    lhs     = from_assignment_pattern( node.left, 'def', circ );
+    lhs = from_assignment_pattern( node.left, 'def', circ );
     if ( node.operator !== '=' )
         determine_read_write( block, lhs, lhs );
     else
@@ -328,29 +297,14 @@ function assignment( ast, block, node, recurse )
 
         case Syntax.VariableDeclarator:
             return declarator( ast, block, node, recurse );
-            // rhsFunc = rhs( block, node.init );
-            // lhs = from_assignment_pattern( node.id, 'def', rhsFunc );
-            // determine_read_write( block, lhs, void 0, true );
-            //
-            // if ( rhsFunc === circ ) ast.call_visitors( node.init, recurse );
-            // break;
 
         case Syntax.AssignmentPattern:
         case Syntax.AssignmentExpression:
             return assignment_node( ast, block, node, recurse );
-            // rhsFunc = rhs( block, node.right );
-            // lhs = from_assignment_pattern( node.left, 'def', rhsFunc );
-            // if ( node.type === Syntax.AssignmentExpression && node.operator !== '=' )
-            //     determine_read_write( block, lhs, lhs );
-            // else
-            //     determine_read_write( block, lhs );
-            //
-            // if ( rhsFunc === circ ) ast.call_visitors( node.right, recurse );
-            // break;
 
         case Syntax.UpdateExpression:
-            lhs = from_assignment_pattern( node.argument, 'def', circ );
-            let self = Object.assign( {}, lhs );
+            lhs       = from_assignment_pattern( node.argument, 'def', circ );
+            let self  = Object.assign( {}, lhs );
             self.type = 'use';
             determine_read_write( block, self );
             determine_read_write( block, lhs );
@@ -362,14 +316,14 @@ function assignment( ast, block, node, recurse )
             break;
 
         case Syntax.MemberExpression:
-            lhs     = from_assignment_pattern( node, 'use', circ );
+            lhs = from_assignment_pattern( node, 'use', circ );
             determine_read_write( block, lhs );
             break;
 
-        // default:
-        //     if ( !/Function|Class/.test( node.type ) )
-        //         ast.call_visitors( node, recurse );
-        //     break;
+        default:
+            if ( !/Function|Class/.test( node.type ) )
+                ast.call_visitors( node, recurse );
+            break;
 
     }
 }
@@ -390,10 +344,10 @@ function determine_read_write( block, lhs, rhs, isDecl )
     if ( rhs ) rhs = flatten( rhs );
 
     const
-        def = va => def_one_var( block, va, isDecl ),
-        use = va => use_one_var( block, va ),
+        def      = va => def_one_var( block, va, isDecl ),
+        use      = va => use_one_var( block, va ),
         forceUse = va => use_one_var( block, va, true ),
-        mark = ( va, fn ) => {
+        mark     = ( va, fn ) => {
             if ( Array.isArray( va ) )
                 va.forEach( fn );
             else if ( va )
@@ -402,6 +356,7 @@ function determine_read_write( block, lhs, rhs, isDecl )
 
     if ( impliedRead )
         mark( lhs, forceUse );
+
     mark( lhs, def );
     mark( rhs, use );
 }
@@ -427,7 +382,7 @@ function use_one_var( block, va, force )
     }
 
     for ( const name of useNames )
-        add_to_block( block, name, 'use', va.index, false, name !== useNames[ useNames.length - 1 ] );
+        add_to_block( block, name, 'use', va.index, false, name !== useNames[ useNames.length - 1 ], name === useNames[ useNames.length - 1 ] );
 }
 
 function def_one_var( block, va, isDecl )
@@ -435,7 +390,7 @@ function def_one_var( block, va, isDecl )
     if ( va.type === 'use' ) return use_one_var( block, va );
 
     const
-        defName = va.names.pop(),
+        defName  = va.names.pop(),
         useNames = va.names;
 
     if ( useNames.length )
@@ -454,10 +409,10 @@ function def_one_var( block, va, isDecl )
     for ( const name of useNames )
     {
         assert( !isDecl, `Should not be a declaration for properties: ${useNames.join( '.' ) + '.' + defName}` );
-        add_to_block( block, name, 'use', va.index, false, true );
+        add_to_block( block, name, 'use', va.index, false, true, false );
     }
 
-    add_to_block( block, useNames.length ? useNames[ useNames.length - 1 ] + '.' + defName : defName, 'def', va.index, isDecl );
+    add_to_block( block, useNames.length ? useNames[ useNames.length - 1 ] + '.' + defName : defName, 'def', va.index, isDecl, false, true );
 }
 
 /**
@@ -467,10 +422,11 @@ function def_one_var( block, va, isDecl )
  * @param {number} index
  * @param {boolean} isDecl
  * @param {boolean} implied
+ * @param {boolean} renameTarget
  */
-function add_to_block( block, name, type, index, isDecl, implied ) // eslint-disable-line max-params
+function add_to_block( block, name, type, index, isDecl, implied, renameTarget ) // eslint-disable-line max-params
 {
-    block.add_var( name, type, index, isDecl, implied );
+    block.add_var( name, type, index, isDecl, implied, renameTarget );
 }
 
 /**

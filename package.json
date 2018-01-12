@@ -20,7 +20,7 @@
         "version": "run-s -s changelog marktoc toc"
     },
     "repository": {
-        "type": "git",
+        "types": "git",
         "url": "git+https://github.com/julianjensen/cfg.git"
     },
     "keywords": [
@@ -40,6 +40,8 @@
         "chai": "^4.1.1",
         "chalk": "^2.3.0",
         "cli-color": "^1.2.0",
+        "command-line-args": "^4.0.7",
+        "command-line-usage": "^4.0.2",
         "coveralls": "^2.13.1",
         "dependency-check": "^2.5.1",
         "eslint": "^4.4.0",

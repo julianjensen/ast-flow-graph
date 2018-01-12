@@ -1,19 +1,28 @@
 /** ******************************************************************************************************************
- * @file Description of file here.
+ * @file Describe what cfg-test-05.js does.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
- * @date Sat Dec 16 2017
+ * @date 11-Jan-2018
  *********************************************************************************************************************/
 "use strict";
 
-const
-    expect = require( 'chai' ).expect;
-    // CFG = require( '../' );
+const a = 10;
+let b;
 
-describe( 'cfg', function() {
+function blah()
+{
+    b++;
 
-    it( 'should do stuff', () => {
-        expect( 1 ).to.equal( 1 );
-    } );
+    for ( const x of a )
+    {
+        b++;
+        if ( b & 1 ) continue;
+    }
 
-} );
+    if ( a < 5 )
+        b = 1;
+    else if ( a < 9 )
+        b = 2;
+
+    b += a;
+}

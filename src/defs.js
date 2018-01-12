@@ -32,14 +32,16 @@
  * @property {string} [scopedName]
  * @property {number} [line]
  * @property {boolean} [implied=false]
+ * @property {boolean} [renameTarget=false]
  */
 
 /**
  * @typedef {object} SSAName
  * @property {number} counter
  * @property {Array<number>} stack
- * @property {function(string):string} newName
+ * @property {function(string, AnnotatedNode|Node|BaseNode):string} newName
  * @property {function():number} top
+ * @property {Array<AnnotatedNode|Node|BaseNode>} nodes
  */
 
 /**
@@ -73,7 +75,7 @@
  * @property {?CFGBlock} block
  * @property {function():CFGBlock} newBlock
  * @property {CFGBlock[]} toExit
- * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):CFGBlock} [flatWalk]
+ * @property {function(CFGBlock,AnnotatedNode|Array<AnnotatedNode>,VisitorHelper):CFGBlock} [flatWalk]
  * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):*} [scanWalk]
  * @property {CFGBlock[]} breakTargets
  * @property {function(CFGBlock):*} addBreakTarget
@@ -105,5 +107,34 @@
  * @property {number} level
  */
 
+/**
+ * @typedef {object} CFGOptions
+ * @property {boolean} ssaSource
+ * @property {object} parser
+ */
 
+/**
+ * @typedef {object} DotOptions
+ * @property {string} title
+ * @property {Array<string>} nodeLabels
+ * @property {Array<string>} edgeLabels    // was graph_label
+ * @property {number} [start]
+ * @property {number} [end]
+ * @property {Array<[ number, number ]>} conditional
+ * @property {Array<[ number, number ]>} unconditional
+ * @property {object} [dotOptions={}]
+ * @property {CFGBlock[]} blocks
+ */
+
+/**
+ * @typedef {object} DataFlow
+ * @property {function(Set, Set):Set} op1
+ * @property {function(Set, Set):Set} op2
+ * @property {function(Set, Set):Set} accumulate
+ * @property {string} adjacent
+ * @property {Set} constant1
+ * @property {Set} constant2
+ * @property {string} [direction]
+ * @property {boolean} [useDomTree=false]
+ */
 

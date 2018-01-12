@@ -7,18 +7,22 @@
 "use strict";
 
 const
-    AST = require( './ast' ),
+    AST            = require( './ast' ),
     create_new_cfg = require( './leader' ),
+    assign         = require( './utils' ).assign,
     defaultOptions = {
-        loc: true,
-        range: true,
-        comment: true,
-        tokens: true,
-        ecmaVersion: 9,
-        sourceType: 'module',
-        ecmaFeatures: {
-            impliedStrict: true,
-            experimentalObjectRestSpread: true
+        ssaSource: false,
+        parser:    {
+            loc:          true,
+            range:        true,
+            comment:      true,
+            tokens:       true,
+            ecmaVersion:  9,
+            sourceType:   'module',
+            ecmaFeatures: {
+                impliedStrict:                true,
+                experimentalObjectRestSpread: true
+            }
         }
     };
 
@@ -30,12 +34,9 @@ class CFG
      */
     constructor( source, options = defaultOptions )
     {
-        this.options = Object.assign( {}, defaultOptions, options );
-        this.options.ecmaFeatures = Object.assign( {}, defaultOptions.ecmaFeatures, options.ecmaFeatures );
-
-        this.ast = new AST( source, this.options );
-        this.cfgs = [];
-        this.scopes = this.ast.escope;
+        this.options = assign( {}, defaultOptions, options );
+        this.ast     = new AST( source, this.options.parser );
+        this.cfgs    = [];
     }
 
     toString()
@@ -57,7 +58,7 @@ class CFG
         if ( !name )
         {
             for ( const func of this.ast.forFunctions() )
-                this.cfgs.push( create_new_cfg( func, this.ast ) );
+                this.cfgs.push( create_new_cfg( func, this.ast, this.options ) );
         }
         else
         {
@@ -66,7 +67,7 @@ class CFG
             if ( !func )
                 return null;
 
-            return create_new_cfg( func, this.ast );
+            return create_new_cfg( func, this.ast, this.options );
         }
     }
 

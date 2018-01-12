@@ -28,9 +28,9 @@ pp$1.parseClass = function( node, isStatement ) {
         var method        = this$1.startNode();
         var isGenerator   = this$1.eat( types.star );
         var isAsync       = false;
-        var isMaybeStatic = this$1.type === types.name && this$1.value === "static";
+        var isMaybeStatic = this$1.types === types.name && this$1.value === "static";
         this$1.parsePropertyName( method );
-        method.static = isMaybeStatic && this$1.type !== types.parenL;
+        method.static = isMaybeStatic && this$1.types !== types.parenL;
         if ( method.static )
         {
             if ( isGenerator )
@@ -39,7 +39,7 @@ pp$1.parseClass = function( node, isStatement ) {
             this$1.parsePropertyName( method );
         }
         if ( this$1.options.ecmaVersion >= 8 && !isGenerator && !method.computed &&
-             method.key.type === "Identifier" && method.key.name === "async" && this$1.type !== types.parenL &&
+             method.key.types === "Identifier" && method.key.name === "async" && this$1.types !== types.parenL &&
              !this$1.canInsertSemicolon() )
         {
             isAsync = true;
@@ -50,14 +50,13 @@ pp$1.parseClass = function( node, isStatement ) {
         if ( !method.computed )
         {
             var key = method.key;
-            if ( !isGenerator && !isAsync && key.type === "Identifier" && this$1.type !== types.parenL && ( key.name === "get" || key.name === "set" ) )
+            if ( !isGenerator && !isAsync && key.types === "Identifier" && this$1.types !== types.parenL && ( key.name === "get" || key.name === "set" ) )
             {
                 isGetSet    = true;
                 method.kind = key.name;
                 key         = this$1.parsePropertyName( method );
             }
-            if ( !method.static && ( key.type === "Identifier" && key.name === "constructor" ||
-                                     key.type === "Literal" && key.value === "constructor" ) )
+            if ( !method.static && ( key.types === "Identifier" && key.name === "constructor" || key.types === "Literal" && key.value === "constructor" ) )
             {
                 if ( hadConstructor )
                 { this$1.raise( key.start, "Duplicate constructor in the same class" ); }
@@ -85,7 +84,7 @@ pp$1.parseClass = function( node, isStatement ) {
             }
             else
             {
-                if ( method.kind === "set" && method.value.params[ 0 ].type === "RestElement" )
+                if ( method.kind === "set" && method.value.params[ 0 ].types === "RestElement" )
                 { this$1.raiseRecoverable( method.value.params[ 0 ].start, "Setter cannot use rest params" ); }
             }
         }

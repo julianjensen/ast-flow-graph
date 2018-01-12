@@ -7,12 +7,15 @@
 "use strict";
 
 const
-    { DFS }        = require( 'traversals' ),
-    dot            = require( './dot' ),
-    vars           = require( './variables' ),
-    { assignment } = require( './ast-vars' ),
-    CFGBlock       = require( './block' ),
-    EdgeList       = require( './edge-list' );
+    assert          = require( 'assert' ),
+    { warn, error } = require( './utils' ),
+    { postOrder }   = require( 'traversals' ),
+    dot             = require( './dot' ),
+    vars            = require( './variables' ),
+    { assignment }  = require( './ast-vars' ),
+    CFGBlock        = require( './block' ),
+    { Block, Edge } = require( './types' ),
+    Edges           = require( './edges' );
 
 /**
  * @type {Iterable<CFGBlock>}
@@ -21,17 +24,19 @@ class BlockManager
 {
     /**
      * @param {AST} ast
+     * @param {CFGOptions} options
      */
-    constructor( ast )
+    constructor( ast, options )
     {
-        this.edges = new EdgeList();
-
         BlockManager.blockId = 0;
+        this.edges           = new Edges( this );
         /** @type {CFGBlock[]} */
         this.blocks = [];
-        this.startNode = this.block().as( BlockManager.START );
+        this.loops     = [];
+        this.startNode = this.block().as( Block.START );
         this.toExit    = [];
         this.ast       = ast;
+        this.options   = options;
     }
 
     /**
@@ -54,8 +59,12 @@ class BlockManager
         if ( final )
             final.forEach( f => this.toExitNode( f ) );
 
-        this.exitNode = this.block().as( BlockManager.EXIT );
-        this.toExit.forEach( b => b.to( this.exitNode ) );
+        this.exitNode = this.block().as( Block.EXIT );
+        this.toExit.forEach( b => {
+            b.to( this.exitNode );
+            if ( b.deferredEdgeType )
+                b.classify( this.exitNode, b.deferredEdgeType );
+        } );
 
         this.clean();
 
@@ -79,23 +88,6 @@ class BlockManager
 
         this.vars.finish();
         this.vars.live_out();
-    }
-
-    pack()
-    {
-        const packed = [];
-
-        for ( let i = 0; i < BlockManager.blockId; i++ )
-        {
-            if ( this.blocks[ i ] && !this.blocks[ i ].isa( BlockManager.DELETED ) )
-            {
-                this.blocks[ i ].renumber( i, packed.length );
-                this.blocks[ i ].id = packed.length;
-                packed.push( this.blocks[ i ] );
-            }
-        }
-
-        this.blocks = packed;
     }
 
     /**
@@ -125,9 +117,12 @@ class BlockManager
      */
     block()
     {
-        const block = new CFGBlock( this.edges );
+        assert( this.edges );
+        const block = new CFGBlock( BlockManager.blockId++, this.edges );
 
         this.blocks[ block.id ] = block;
+        if ( this.loops.length )
+            block.as( Block.LOOP );
 
         return block;
     }
@@ -159,22 +154,60 @@ class BlockManager
      */
     create_dot( title )
     {
+        const
+            cond   = [],
+            uncond = [];
+
+        this.blocks.forEach( b => {
+            for ( const edge of this.edges.edges( b ) )
+            {
+                if ( edge.type.isa( Edge.TRUE | Edge.FALSE | Edge.EXCEPTION ) )
+                    cond.push( edge );
+                else
+                    uncond.push( edge );
+            }
+        } );
+
         return dot( {
             title,
             nodeLabels:    [ ...this ].map( b => b.graph_label() ),
-            edgeLabels:    [ ...this ].map( b => b.node_label() ),
             start:         this.startNode.id,
             end:           this.exitNode.id,
-            conditional:   this.edges.conditional(),
-            unconditional: this.edges.unconditional(),
+            conditional:   cond,
+            unconditional: uncond,
             blocks:        this.blocks
         } );
+    }
+
+    pack( blocks )
+    {
+        const
+            offsets = [],
+            packed  = [];
+
+        let cur = 0;
+
+        for ( let i = 0; i < BlockManager.blockId; i++ )
+        {
+            if ( blocks[ i ] && !blocks[ i ].isa( Block.DELETED ) )
+            {
+                blocks[ i ].oldId = blocks[ i ].id;
+                blocks[ i ].id    = packed.length;
+                packed.push( blocks[ i ] );
+                cur = blocks[ i ].id - blocks[ i ].oldId;
+            }
+
+            offsets.push( cur );
+        }
+
+        this.edges.renumber( offsets );
+        return packed;
     }
 
     clean()
     {
         let changed = true,
-            blocks;
+            blocks  = this.blocks;
 
         /**
          * @param {number} blockIndex
@@ -183,94 +216,104 @@ class BlockManager
         {
             const block = blocks[ blockIndex ];
 
-            if ( !block || block.isa( BlockManager.START ) || block.isa( BlockManager.EXIT ) ) return;
+            if ( !block || block.isa( Block.DELETED ) || block.isa( Block.START ) || block.isa( Block.EXIT ) ) return;
 
-            if ( block.isa( BlockManager.TEST ) )
+            if ( block.isa( Block.TEST ) )
             {
                 if ( block.succs.length === 2 && block.succs[ 0 ] === block.succs[ 1 ] )
                 {
                     const succ = block.succs[ 0 ];
-                    block.remove_succ( succ ).remove_succ( succ );
-                    block.as( BlockManager.NORMAL ).to( succ );
+                    block.remove_succs();
+                    block.as( Block.NORMAL ).to( succ );
                     changed = true;
                 }
             }
 
             if ( block.succs.length === 1 )
             {
-                const succ = block.succs[ 0 ];
+                const
+                    succ = block.succs[ 0 ];
+
+                if ( !succ || succ.isa( Block.START ) || succ.isa( Block.EXIT ) ) return;
 
                 if ( block.isEmpty() )
                 {
-                    if ( ( changed = block.eliminate() ) ) blocks[ block.id ] = null;
+                    if ( block.eliminate() ) changed = true;
                 }
 
-                if ( !block.isa( BlockManager.DELETED ) && succ.preds.length === 1 )
+                if ( !block.isa( Block.DELETED ) && !succ.isa( Block.DELETED ) && succ.preds.length === 1 )
                 {
                     if ( !succ.isEmpty() && succ.scope === block.scope )
                     {
-                        block.nodes       = block.nodes.concat( succ.nodes );
+                        const
+                            on = succ.nodes.slice();
+
                         succ.nodes.length = 0;
-                        if ( ( changed = succ.eliminate() ) ) blocks[ succ.id ] = null;
+                        if ( succ.eliminate() )
+                        {
+                            block.nodes = block.nodes.concat( on );
+                            changed     = true;
+                            block.types |= ( succ.types & ~Block.DELETED );
+                        }
+                        else
+                            succ.nodes = on;
                     }
 
-                    if ( succ.isEmpty() && succ.isa( BlockManager.TEST ) )
+                    if ( succ.isEmpty() && succ.isa( Block.TEST ) )
                     {
-                        block.as( BlockManager.TEST );
+                        block.as( Block.TEST );
                         block.remove_succ( succ );
-                        if ( succ.jumpFalse )
-                        {
-                            const f = succ.jumpFalse;
-                            succ.remove_succ( f );
-                            block.whenFalse( f );
-                        }
-                        if ( succ.jumpTrue )
-                        {
-                            const t = succ.jumpTrue;
-                            succ.remove_succ( t );
-                            block.whenTrue( t );
-                        }
-                        block.to( succ.succs );
-                        blocks[ succ.id ] = null;
-                        succ.eliminate( true );
+                        succ.eliminate();
                         changed = true;
                     }
                 }
             }
         }
 
+        blocks.forEach( b => !b.succs.length && !b.preds.length && !b.isa( Block.START ) && !b.isa( Block.EXIT ) && b.as( Block.DELETED ) );
+        blocks = this.pack( blocks );
+
         while ( changed )
         {
-            blocks = this.blocks;
             changed = false;
 
-            DFS( this.map( b => b.succs.map( s => s.id ) ), {
-                post: pass
-            } );
+            postOrder( blocks.map( b => b.succs.map( s => s.id ) ), pass );
 
-            if ( changed ) this.pack();
+            if ( changed )
+                blocks = this.pack( blocks );
+        }
+
+        this.blocks = blocks;
+    }
+
+    in_loop( id )
+    {
+        this.loops.push( id );
+    }
+
+    out_loop( id )
+    {
+        let skipped = [];
+
+        if ( this.loops[ this.loops.length - 1 ] === id )
+            this.loops.pop();
+        else
+        {
+            while ( this.loops.length )
+            {
+                const top = this.loops.pop();
+                if ( top === id ) break;
+                skipped.push( top );
+            }
+
+            if ( !this.loops.length )
+                console.error( error( `Skipped all loops with id ${id}` ) );
+            else
+                console.log( warn( `Skipping loop nesting [ ${skipped.join( ', ' )} ] with ${id}` ) );
         }
     }
 }
 
 BlockManager.blockId = 0;
-
-BlockManager.TEST      = 'test';
-BlockManager.TRUE      = 'true';
-BlockManager.FALSE     = 'false';
-BlockManager.NORMAL    = 'normal';
-BlockManager.EXCEPTION = 'exception';
-BlockManager.CATCH     = 'catch';
-BlockManager.BREAK     = 'break';
-BlockManager.CONTINUE  = 'continue';
-BlockManager.LOOP      = 'loop';
-BlockManager.THROW     = 'throw';
-BlockManager.START     = 'start';
-BlockManager.EXIT      = 'exit';
-BlockManager.CONVERGE  = 'converge';
-BlockManager.TEMPORARY = 'temporary';
-BlockManager.DELETED   = 'deleted';
-
-CFGBlock.referenceBlockManager( BlockManager );
 
 module.exports = BlockManager;

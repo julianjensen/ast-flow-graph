@@ -7,14 +7,14 @@
 "use strict";
 
 const
-    Table            = require( 'cli-table2' ),
-    chalk            = require( 'chalk' ),
-    log              = ( ...args ) => console.log( ...args ),
-    string = s => typeof s === 'string',
+    Table              = require( 'cli-table2' ),
+    chalk              = require( 'chalk' ),
+    log                = ( ...args ) => console.log( ...args ),
+    string             = s => typeof s === 'string',
     { isArray: array } = Array,
-    headline = s => chalk.yellowBright( s ),
-    header = s => chalk.cyanBright( s ),
-    row = r => r.map( s => chalk.whiteBright( s ) );
+    headline           = s => chalk.yellowBright( s ),
+    header             = s => chalk.cyanBright( s ),
+    row                = r => r.map( s => chalk.whiteBright( s ) );
 
 
 /**
@@ -25,11 +25,10 @@ const
 function _as_table( hdr, headers, rows )
 {
     let output,
-        isRows = a => array( a ) && array( a[ 0 ] ),
+        isRows   = a => array( a ) && array( a[ 0 ] ),
         isHeader = a => array( a ) && string( a[ 0 ] ),
-        // isHeadline = a => string( a ),
-        index = a => isRows( a ) ? 2 : isHeader( a ) ? 1 : 0,
-        args = [];
+        index    = a => isRows( a ) ? 2 : isHeader( a ) ? 1 : 0,
+        args     = [];
 
     if ( hdr ) args[ index( hdr ) ] = hdr;
     if ( headers ) args[ index( headers ) ] = headers;
@@ -87,5 +86,8 @@ module.exports = {
     log,
     as_table,
     start_table,
-    str_table: _as_table
+    str_table( hdr, headers, rows )
+    {
+        return _as_table( hdr, headers, rows ).toString();
+    }
 };

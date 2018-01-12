@@ -12,7 +12,9 @@
 
 /** */
 const
-    list         = require( 'yallist' );
+    assert          = require( 'assert' ),
+    { Edge, Block } = require( './types' ),
+    list            = require( 'yallist' );
 
 module.exports = {
     BlockStatement,
@@ -65,7 +67,7 @@ function to_label( node, vh, type, targets )
     if ( node.label )
     {
         const
-            self  = vh.newBlock().from( vh.block ).add( node ).as( type ).by( type ),
+            self  = vh.newBlock().from( vh.block ).add( node ).edge_as( type ).by( type ),
             block = vh.ast.find_label( node, node.label.name );
 
         if ( !block )
@@ -82,7 +84,8 @@ function to_label( node, vh, type, targets )
         if ( !block )
             throw new SyntaxError( `Statement '${type}' is not inside a breakable scope` );
 
-        block.from( vh.block.add( node ).as( type ).by( type ) );
+        vh.block.add( node ).to( block ).classify( block, type );
+
 
         return null;
     }
@@ -95,7 +98,7 @@ function to_label( node, vh, type, targets )
  */
 function BreakStatement( node, visitorHelper )
 {
-    return to_label( node, visitorHelper, visitorHelper.BlockManager.BREAK, visitorHelper.getBreakTarget );
+    return to_label( node, visitorHelper, Edge.BREAK, visitorHelper.getBreakTarget );
 }
 
 /**
@@ -105,7 +108,7 @@ function BreakStatement( node, visitorHelper )
  */
 function CatchClause( node, visitorHelper )
 {
-    return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ).add( node ), node.body, visitorHelper );
+    return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ).as( Block.CATCH ).add( node ), node.body, visitorHelper );
 }
 
 /**
@@ -115,7 +118,7 @@ function CatchClause( node, visitorHelper )
  */
 function ContinueStatement( node, visitorHelper )
 {
-    return to_label( node, visitorHelper, visitorHelper.BlockManager.CONTINUE, visitorHelper.getLoopTarget );
+    return to_label( node, visitorHelper, Edge.CONTINUE, visitorHelper.getLoopTarget );
 }
 
 /**
@@ -129,9 +132,9 @@ function DoWhileStatement( node, visitorHelper )
         { newBlock, block } = visitorHelper;
 
     let
-        body = newBlock().from( block ).by( 'DoWhile.body' ),
-        cont = newBlock().as( visitorHelper.BlockManager.CONVERGE ).by( 'DoWhile.conv' ),
-        test = newBlock().as( visitorHelper.BlockManager.TEST ).by( 'DoWhile.test' ).add( node.test ).whenTrue( body ).whenFalse( cont );
+        body = newBlock().from( block ).by( 'DoWhile.body' ).as( Block.LOOP ),
+        cont = newBlock().as( Block.CONVERGE ).by( 'DoWhile.conv' ),
+        test = newBlock().as( Block.TEST ).by( 'DoWhile.test' ).add( node.test ).whenTrue( body ).whenFalse( cont );
 
     visitorHelper.addLoopTarget( test, cont );
     body = visitorHelper.flatWalk( body, node, visitorHelper );
@@ -173,10 +176,10 @@ function ForStatement( node, visitorHelper )
         { newBlock, block } = visitorHelper;
 
     let init   = node.init && newBlock().by( 'For.init' ).add( node.init ),
-        test   = node.test && newBlock().as( visitorHelper.BlockManager.TEST ).by( 'For.test' ).add( node.test ),
-        body   = newBlock().by( 'For.body' ),
+        test   = node.test && newBlock().as( Block.TEST ).by( 'For.test' ).add( node.test ),
+        body   = newBlock().by( 'For.body' ).as( Block.LOOP ),
         update = node.update && newBlock().by( 'For.update' ).add( node.update ),
-        cont   = newBlock().as( visitorHelper.BlockManager.CONVERGE ).by( 'For.conv' );
+        cont   = newBlock().as( Block.CONVERGE ).by( 'For.conv' );
 
     // *************** ENTRY
     // entry block wants: init -> test -> body (there is always a body)
@@ -241,8 +244,8 @@ function ForInStatement( node, visitorHelper )
     const { newBlock, block } = visitorHelper;
 
     let update = newBlock().from( block ).add( node ).by( 'ForInOf.update' ),
-        body   = newBlock().from( update ).by( 'ForInOf.body' ),
-        cont   = newBlock().from( update ).as( visitorHelper.BlockManager.CONVERGE ).by( 'ForInOf.conv' );
+        body   = newBlock().from( update ).by( 'ForInOf.body' ).as( Block.LOOP ),
+        cont   = newBlock().from( update ).as( Block.CONVERGE ).by( 'ForInOf.conv' );
 
     visitorHelper.addLoopTarget( update, cont );
     body = visitorHelper.flatWalk( body, node.body, visitorHelper );
@@ -291,14 +294,13 @@ function ForOfStatement( node, visitorHelper )
 function IfStatement( node, visitorHelper )
 {
     let test       = visitorHelper.newBlock()
-        .as( visitorHelper.BlockManager.TEST )
+        .as( Block.TEST )
         .from( visitorHelper.block )
         .by( 'If.test' )
         .add( node.test ),
 
         consequent = visitorHelper.newBlock().by( 'If.cons' ),
         alternate;
-        // cont       = visitorHelper.newBlock().as( visitorHelper.BlockManager.CONVERGE );
 
     test.whenTrue( consequent );
     consequent = visitorHelper.flatWalk( consequent, node.consequent, visitorHelper );
@@ -321,7 +323,7 @@ function IfStatement( node, visitorHelper )
  */
 function ReturnStatement( node, visitorHelper )
 {
-    visitorHelper.block.add( node );
+    visitorHelper.block.add( node ).defer_edge_type( Edge.RETURN );
     visitorHelper.toExit.push( visitorHelper.block );
 
     return null;
@@ -418,25 +420,25 @@ function ReturnStatement( node, visitorHelper )
  *             consequent
  * SWITCH           │
  *    │             v
- *    └──> TEST ──────────> BODY ──────────┐ break
+ *    └──> TEST ───────────> BODY ─────────┐ break
  *           │                │            │
  *        alt│              no│break       │
  *           │              no│body        │
  *           │                │            │
  *           V                V            │
  *         TEST ───────────> BODY ─────────┤ break
- *           │                  │          │
- *        alt│                no│break     │
- *           │                no│body      │
- *           │                  │          │
- *           │                  V          │
- *           │  DEFAULT ─────> BODY ───────┤ break (or not)
- *           │     ^            │          │
- *           │     │          no│break     │
- *           │   if│false     no│body      │
- *           │  and│default     │          │
- *           V     │            V          │
- *         TEST ─────────────> BODY ───────┤ break (or not)
+ *           │                │            │
+ *        alt│              no│break       │
+ *           │              no│body        │
+ *           │                │            │
+ *           │                V            │
+ *           │  DEFAULT ───> BODY ─────────┤ break (or not)
+ *           │     ^          │            │
+ *           │     │        no│break       │
+ *           │   if│false   no│body        │
+ *           │  and│default   │            │
+ *           V     │          V            │
+ *         TEST ───────────> BODY ─────────┤ break (or not)
  *               if│false                  │
  *           and no│default                │
  *                 v                       │
@@ -450,7 +452,7 @@ function SwitchStatement( node, visitorHelper )
     const { newBlock, block } = visitorHelper;
 
     let _switch  = newBlock().from( block ).add( node.discriminant ),
-        cont     = newBlock().as( visitorHelper.BlockManager.CONVERGE ),
+        cont     = newBlock().as( Block.CONVERGE ),
 
         /** @type {CaseInfo} */
         _default,
@@ -458,7 +460,7 @@ function SwitchStatement( node, visitorHelper )
         /** @type {List<CaseInfo>} */
         caseList = list.create( node.cases.map( n => {
 
-            let test     = n.test && newBlock().as( visitorHelper.BlockManager.TEST ).add( n.test ),
+            let test     = n.test && newBlock().as( Block.TEST ).add( n.test ),
                 body     = n.consequent && n.consequent.length && newBlock(),
                 /** @type {CaseInfo} */
                 caseInfo = {
@@ -553,7 +555,7 @@ function SwitchCase( node )
  */
 function ThrowStatement( node, visitorHelper )
 {
-    visitorHelper.block.add( node ).as( visitorHelper.BlockManager.THROW );
+    visitorHelper.block.add( node ).as( Block.THROW ).edge_as( Edge.EXCEPTION );
     return null;
 }
 
@@ -602,18 +604,17 @@ function WhileStatement( node, visitorHelper )
     const { newBlock, block } = visitorHelper;
 
     let
-        body = newBlock(),
-        alt  = newBlock().as( visitorHelper.BlockManager.CONVERGE ),
-        test = newBlock().as( visitorHelper.BlockManager.TEST ).add( node.test ).whenFalse( alt ).whenTrue( body ).from( block );
+        body = newBlock().as( Block.LOOP ),
+        alt  = newBlock().as( Block.CONVERGE ),
+        test = newBlock().as( Block.TEST ).add( node.test ).whenFalse( alt ).whenTrue( body ).from( block );
 
     visitorHelper.addLoopTarget( test, alt );
     body = visitorHelper.flatWalk( body, node.body, visitorHelper );
     visitorHelper.popTarget();
 
+    assert( body, "Where yo body at?" );
     if ( body )
         body.to( test );
-    else
-        console.log( `wtf? ${node}` );
 
     return alt;
 }
@@ -632,7 +633,7 @@ function ConditionalExpression( node, visitorHelper )
         test = newBlock()
             .from( block )
             .add( node.test )
-            .as( visitorHelper.BlockManager.TEST )
+            .as( Block.TEST )
             .whenTrue( cons );
 
     cons = visitorHelper.flatWalk( cons, node.consequent, visitorHelper );

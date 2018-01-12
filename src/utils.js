@@ -7,22 +7,42 @@
 "use strict";
 
 const
-    { DFS }       = require( 'traversals' ),
+    { DFS }            = require( 'traversals' ),
     {
         iterative,
         create_dom_tree,
         reverse_graph
-    }             = require( 'dominators' ),
-    union         = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
-    _intersection = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
-    intersection  = ( a, b ) => _intersection( ...( a.size < b.size ? [ a, b ] : [ b, a ] ) ),
-    assert = require( 'assert' ),
-    clc    = require( 'cli-color' ),
-    warn   = clc.xterm( 220 ),
-    error  = clc.xterm( 196 ),
-    info   = clc.xterm( 117 ),
+    }                  = require( 'dominators' ),
+    union              = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
+    _intersection      = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
+    intersection       = ( a, b ) => _intersection( ...( a.size < b.size ? [ a, b ] : [ b, a ] ) ),
 
-    colors = {
+    getset             = o => o.hasOwnProperty( 'get' ) || o.hasOwnProperty( 'set' ),
+    /**
+     * Checks for `typeof f === 'function'`
+     * @param {*} f
+     */
+    func               = f => typeof f === 'function',
+    /**
+     * Checks for boolean type.
+     * @param {*} b
+     * @return {Boolean}
+     */
+    bool               = b => typeof b === 'boolean',
+    number             = n => typeof n === 'number',
+    inspect            = require( 'util' ).inspect,
+    string             = s => typeof s === 'string',
+    toStr              = x => Object.prototype.toString.call( x ),
+    { isArray: array } = Array,
+    obj                = o => typeof o === 'object' && !array( o ) && o !== null,
+    has                = ( o, name ) => obj( o ) && Reflect.has( o, name ),
+    assert             = require( 'assert' ),
+    clc                = require( 'cli-color' ),
+    warn               = clc.xterm( 220 ),
+    error              = clc.xterm( 196 ),
+    info               = clc.xterm( 117 ),
+    log                = console.log.bind( console ),
+    colors             = {
         dark:  {
             green:  clc.xterm( 34 ),
             blue:   clc.xterm( 26 ),
@@ -59,18 +79,6 @@ function make_flow( blocks, _idoms )
     tree.idoms    = _idoms || iterative( tree.succs );
     tree.domSuccs = create_dom_tree( tree.idoms );
     tree.domPreds = reverse_graph( tree.domSuccs );
-
-    /**
-     * @typedef {object} DataFlow
-     * @property {function(Set, Set):Set} op1
-     * @property {function(Set, Set):Set} op2
-     * @property {function(Set, Set):Set} accumulate
-     * @property {string} adjacent
-     * @property {Set} constant1
-     * @property {Set} constant2
-     * @property {string} [direction]
-     * @property {boolean} [useDomTree=false]
-     */
 
     /**
      * subscriptNumbers = [ '₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉' ],
@@ -127,14 +135,12 @@ function make_flow( blocks, _idoms )
             adjacent = dataFlow.useDomTree ? 'dom' + _adjacent[ 0 ].toUpperCase() + _adjacent.substr( 1 ) : _adjacent;
 
 
-        // if ( !result.length )
-        //     blocks.forEach( () => result.push( new Set() ) );
-
         function _flow( index )
         {
             const
                 prevSize = result[ index ] ? result[ index ].size : -1,
-                curSet   = result[ index ] = tree[ adjacent ][ index ].reduce( ( u, i ) => accumulate( u, op1( constant1[ i ], op2( result[ i ] || new Set(), constant2[ i ] ) ) ), result && result[ index ] || new Set() );
+                curSet   = result[ index ] =
+                    tree[ adjacent ][ index ].reduce( ( u, i ) => accumulate( u, op1( constant1[ i ], op2( result[ i ] || new Set(), constant2[ i ] ) ) ), result && result[ index ] || new Set() );
 
             return curSet.size !== prevSize;
         }
@@ -166,10 +172,248 @@ function make_flow( blocks, _idoms )
     };
 }
 
+/**
+ * @param {?Array} arr
+ * @param {Array} [result=[]]
+ * @param {Boolean} [deep=true]
+ * @return {Array}
+ */
+function flatten( arr, result = [], deep = true )
+{
+    if ( !Array.isArray( arr ) ) return [ arr ];
+
+    const
+        length = arr && arr.length;
+
+    if ( !length ) return result;
+
+    let index = -1;
+
+    while ( ++index < length )
+    {
+        const value = arr[ index ];
+
+        if ( Array.isArray( value ) )
+        {
+            if ( deep )
+                flatten( value, result, true );
+            else
+                result.push( ...value );
+        }
+        else
+            result[ result.length ] = value;
+    }
+
+    return result;
+}
+
+/**
+ * Proper deep copy.
+ *
+ * @param {object} src      - source
+ * @param {object} [_dest]  - Optional destination, if not present a new object will be created
+ * @param {function(string, object):?object} [cb=null]
+ * @param {boolean} [includeSymbols=false]  - Set this to also copy `Symbol` keyed values. You generally don't ever want this.
+ */
+function _deep_copy( src = {}, _dest = {}, cb = null, includeSymbols = false )
+{
+    const dest = _dest;
+
+    let fields = [ ...Object.getOwnPropertyNames( src ) ];
+
+    if ( includeSymbols ) fields = fields.concat( [ ...Object.getOwnPropertySymbols( src ) ] );
+
+    for ( let name of fields )
+    {
+        let descriptor = Object.getOwnPropertyDescriptor( src, name );
+
+        if ( !getset( descriptor ) )
+            descriptor.value = copy_value( src[ name ], cb, includeSymbols );
+
+        if ( cb !== null )
+        {
+            let resp = cb( name, descriptor );
+
+            if ( resp )
+            {
+                if ( resp.name ) name = resp.name;
+                if ( resp.descriptor ) descriptor = resp.descriptor;
+            }
+        }
+        delete dest[ name ];
+        Object.defineProperty( dest, name, descriptor );
+    }
+
+    return dest;
+}
+
+/**
+ *
+ * @param {RegExp} rx
+ * @return {string}
+ */
+function regexpFlags( rx )
+{
+    return ( rx.global && 'g' ) + ( rx.ignoreCase && 'i' ) + ( rx.multiline && 'm' ) + ( rx.sticky && 'y' );
+}
+
+/**
+ *
+ * @param {*} value
+ * @param {function} cb
+ * @param {boolean} incl
+ * @return {*}
+ */
+function copy_value( value, cb, incl )
+{
+    const kls = toString.call( value ).slice( 8, -1 ).toLowerCase();
+
+    switch ( kls )
+    {
+        case 'object':
+            return deep_copy( value, {}, cb, incl );
+        case 'array':
+            return value.map( v => copy_value( v, cb, incl ) );
+        case 'regexp':
+            const rx   = new RegExp( value, regexpFlags( value ) );
+            rx.source  = value.source;
+            rx.unicode = value.unicode;
+            return rx;
+        case 'date':
+            return new Date( value.getTime() );
+        case 'map':
+            return new Map( [ ...value ] );
+        case 'set':
+            return new Set( [ ...value ] );
+        default:
+            return value;
+    }
+}
+
+/**
+ * Proper deep copy.
+ *
+ * @param {object} src      - source
+ * @param {object|boolean|function(string, object):?object} [dest={}]  - Optional destination, if not present a new object will be created
+ * @param {boolean|function(string, object):?object} [cb=null]
+ * @param {boolean} [includeSymbols=false]
+ */
+function deep_copy( src, dest = {}, cb = null, includeSymbols = false )
+{
+    if ( arguments.length > 1 )
+    {
+        if ( arguments.length === 2 )
+        {
+            if ( func( dest ) )
+            {
+                cb   = dest;
+                dest = {};
+            }
+            else if ( bool( dest ) )
+            {
+                includeSymbols = dest;
+                dest           = {};
+                cb             = null;
+            }
+        }
+        else if ( arguments.length === 3 )
+        {
+            if ( func( dest ) )
+            {
+                cb   = dest;
+                dest = {};
+            }
+            else if ( bool( cb ) )
+            {
+                includeSymbols = cb;
+                cb             = null;
+            }
+        }
+    }
+
+    return _deep_copy( src, dest, cb, includeSymbols );
+}
+
+function assign( ...objs )
+{
+    return objs.reduce( ( all, cur ) => deep_copy( cur, all ), {} );
+}
+
+function trace_class( cls )
+{
+    const
+        done     = new Set(),
+        p        = cls.prototype,
+        stringer = x => {
+            if ( has( x, 'id' ) )
+                return '' + x.id;
+            else if ( has( x, '_preds' ) )
+                return 'Edges';
+            else if ( obj( x ) )
+                return inspect( x, { depth: 0, colors: false } );
+            else if ( array( x ) )
+            {
+                x = x.map( stringer );
+                if ( x.length > 20 )
+                    return '[ ' + x.slice( 0, 20 ).join( ', ' ) + ', ... ]';
+                else
+                    return `[ ${x.join( ', ' )} ]`;
+            }
+            else if ( number( x ) )
+                return '' + x;
+            else if ( x === void 0 )
+                return 'void';
+            else
+                return toStr( x );
+        },
+        callLine = ( lns, lnum ) => {
+            let ln = lns.slice( lnum, lnum + 1 )[ 0 ],
+                m  = ln.match( /^\s*at\s([^(]+)\(.*\/([-_a-zA-Z]+\.js):(\d+)/ );
+
+            if ( !m )
+            {
+                ln = lns.slice( lnum - 1, lnum )[ 0 ];
+                m  = ln.match( /^\s*at\s([^(]+)\(.*\/([-_a-zA-Z]+\.js):(\d+)/ );
+            }
+
+            return { site: m[ 1 ].trim(), file: m[ 2 ], line: m[ 3 ] };
+        };
+
+    for ( const [ name, desc ] of Object.entries( Object.getOwnPropertyDescriptors( p ) ) )
+    {
+        if ( !string( name ) || !func( desc.value ) || done.has( desc.value ) || name === 'toString' ) continue;
+
+        done.add( desc.value );
+
+        const fn = p[ name ];
+
+        p[ name ] = function( ...args ) {
+            const
+                __args = args.slice(),
+                debStr = cls.name + '::' + name + '( ',
+                caller = callLine( new Error().stack.split( /\r?\n/ ), 3 );
+
+            for ( const [ i, x ] of __args.entries() )
+                __args[ i ] = stringer( x );
+
+
+            const
+                r = fn.call( this, ...args );
+
+            if ( !name.startsWith( '_' ) ) log( debStr + __args.join( ', ' ) + ' ) -> ' + stringer( r ) + `(from function "${caller.site}" in ${caller.file} on line ${caller.line})` );
+            return r;
+        };
+    }
+}
+
 module.exports = {
     colors,
     warn,
     info,
     error,
-    make_flow
+    flatten,
+    make_flow,
+    clone: deep_copy,
+    assign,
+    trace_class
 };

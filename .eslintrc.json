@@ -117,15 +117,7 @@
         "no-extend-native": 2,
         "no-extra-bind": 2,
         "no-extra-boolean-cast": 2,
-        "no-extra-parens": [
-            "error",
-            "all",
-            {
-                "conditionalAssign": false,
-                "returnAssign": false,
-                "nestedBinaryExpressions": false
-            }
-        ],
+        "no-extra-parens": "off",
         "no-fallthrough": 1,
         "no-floating-decimal": 2,
         "no-func-assign": 2,

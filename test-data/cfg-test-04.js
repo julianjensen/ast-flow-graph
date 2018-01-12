@@ -18,14 +18,14 @@ pp$1.parseClass = function( node, isStatement ) {
     while ( !this.eat( types.braceR ) )
     {
         var method    = this$1.startNode();
-        method.static = isMaybeStatic && this$1.type !== types.parenL;
+        method.static = isMaybeStatic && this$1.types !== types.parenL;
         method.kind   = "method";
-        testVar = 123;
+        let testVar = 123;
         if ( !method.computed )
         {
             testVar = 234;
             var key = method.key;
-            if ( !isGenerator && !isAsync && key.type === "Identifier" )
+            if ( !isGenerator && !isAsync && key.types === "Identifier" )
                 method.kind = key.name;
             if ( !method.static )
                 method.kind = "constructor";
@@ -41,7 +41,7 @@ pp$1.parseClass = function( node, isStatement ) {
             }
             else
             {
-                if ( method.kind === "set" && method.value.params[ 0 ].type === "RestElement" )
+                if ( method.kind === "set" && method.value.params[ 0 ].types === "RestElement" )
                 { this$1.raiseRecoverable( method.value.params[ 0 ].start, "Setter cannot use rest params" ); }
             }
         }
