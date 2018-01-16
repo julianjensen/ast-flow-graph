@@ -10,8 +10,6 @@ import { Edge, enum_to_string } from './types';
 import { reverse_graph } from 'dominators';
 
 const
-    // { Edge, enum_to_string } = require( './types' ),
-    // { reverse_graph }        = require( 'dominators' ),
     code                     = ( from, to ) => `${from}->${to}`,
     index                    = block => typeof block === 'object' && !Array.isArray( block ) && block !== null ? block.id : block;
 

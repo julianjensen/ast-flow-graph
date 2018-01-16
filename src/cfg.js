@@ -11,9 +11,6 @@ import create_new_cfg from './leader';
 import { assign } from './utils';
 
 const
-    // AST            = require( './ast' ),
-    // create_new_cfg = require( './leader' ),
-    // assign         = require( './utils' ).assign,
     defaultOptions = {
         ssaSource: false,
         parser:    {

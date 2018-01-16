@@ -6,17 +6,11 @@
  *********************************************************************************************************************/
 "use strict";
 
-const
-    assign        = require( './utils' ).assign,
-    { DFS }       = require( 'traversals' ),
-    {
-        iterative,
-        frontiers_from_succs,
-        make_dom,
-        create_dom_tree,
-        reverse_graph
-    }             = require( 'dominators' ),
+import { assign } from './utils';
+import { DFS } from 'traversals';
+import { create_dom_tree, frontiers_from_succs, iterative, make_dom, reverse_graph } from 'dominators';
 
+const
     union         = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
     _intersection = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
     intersection  = ( a, b ) => _intersection( ...( a.size < b.size ? [ a, b ] : [ b, a ] ) ),
@@ -45,7 +39,7 @@ const
  * @param {AST} ast
  * @param {Scope} topScope
  */
-function variables( bm, ast, topScope )
+export default function variables( bm, ast, topScope )
 {
     const
         /** @type {Scope} */
@@ -553,4 +547,4 @@ function variables( bm, ast, topScope )
     };
 }
 
-module.exports = variables;
+// module.exports = variables;

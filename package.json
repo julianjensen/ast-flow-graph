@@ -71,5 +71,9 @@
         "typescript": "^2.6.2",
         "vscode-textmate": "^3.2.0",
         "yallist": "^3.0.2"
+    },
+    "@std/esm": {
+        "esm": "js",
+        "cjs": true
     }
 }

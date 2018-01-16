@@ -247,11 +247,3 @@ export function enum_to_string( enumType, val )
 
     return vals;
 }
-
-// module.exports = {
-//     Block:         _Block, Edge: _Edge, outputOptions,
-//     enum_to_string,
-//     output,
-//     SymbolFlags:   _SymbolFlags,
-//     ModifierFlags: _ModifierFlags
-// };

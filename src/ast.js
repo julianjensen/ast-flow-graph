@@ -7,25 +7,12 @@
 "use strict";
 
 import assert from 'assert';
-import {
-    get_from_function,
-    isBaseFunction
-} from './ast-vars';
+import { get_from_function, isBaseFunction } from './ast-vars';
 import { analyze } from 'escope';
 import { traverse } from 'estraverse';
 import { parse, Syntax, VisitorKeys } from 'espree';
 
 const
-    // escope             = require( 'escope' ),
-    // estraverse         = require( 'estraverse' ),
-    // { traverse }       = estraverse,
-
-    // espree             = require( 'espree' ),
-    // {
-    //     Syntax,
-    //     VisitorKeys
-    // }                  = espree,
-
     { isArray: array } = Array,
     nodeString         = function() {
         let keys = VisitorKeys[ this.type ].map( key => `${key}${array( this[ key ] ) ? '(' + this[ key ].length + ')' : ''}` ).join( ', ' );

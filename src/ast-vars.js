@@ -9,10 +9,7 @@
 import assert from 'assert';
 import { Syntax } from 'espree';
 import { flatten } from './utils';
-// const
-//     assert         = require( 'assert' ),
-//     { Syntax }     = require( 'espree' ),
-//     { flatten }    = require( './utils' ),
+
 const circ           = { prop: () => circ, index: () => circ, assign: () => circ };
 
 export const isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression;

@@ -6,19 +6,18 @@
  *********************************************************************************************************************/
 "use strict";
 
-require( '@std/esm' )( module, { esm: 'all' } );
+import CFG from './src/cfg';
+import path from 'path';
+import { promisify } from 'util';
+import fs from 'fs';
+import cli from 'command-line-args';
+import usage from 'command-line-usage';
 
 const
-    CFG        = require( './src/cfg' ),
-    path       = require( 'path' ),
-    promisify  = require( 'util' ).promisify,
     version    = require( path.join( __dirname, 'package.json' ) ).version,
-    fs         = require( 'fs' ),
     stat       = promisify( fs.stat ),
     writeFile  = promisify( fs.writeFile ),
     stdin      = process.stdin,
-    cli        = require( 'command-line-args' ),
-    usage      = require( 'command-line-usage' ),
     argumentos = [
         {
             alias:        'd',
@@ -52,6 +51,13 @@ const
             alias:        't',
             name:         'table',
             description:  "Output a table showing all CFG blocks",
+            defaultValue: false,
+            type:         Boolean
+        },
+        {
+            alias:        'l',
+            name:         'lines',
+            description:  "Output CFG blocks as text",
             defaultValue: false,
             type:         Boolean
         },
@@ -151,6 +157,7 @@ async function single_function( cfg, name, generate )
 
     if ( args.verbose ) console.log( hdr.replace( '__FN__', c.name ) );
     if ( args.table ) console.log( c.toTable() );
+    if ( args.lines ) console.log( '' + cfg );
 
     if ( args.graph )
     {

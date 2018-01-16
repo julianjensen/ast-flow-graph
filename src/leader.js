@@ -10,13 +10,9 @@
 import { str_table } from './dump';
 import { Block, Edge } from './types';
 import BlockManager from './manager';
-import visitors from './visitors';
+import * as visitors from './visitors';
 
 const
-    // { str_table }      = require( './dump' ),
-    // { Block, Edge }    = require( './types' ),
-    // BlockManager       = require( './manager' ),
-    // visitors           = require( './visitors' ),
     { isArray: array } = Array;
 
 

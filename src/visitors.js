@@ -10,39 +10,16 @@
  *******************************************************************************************************/
 'use strict';
 
-/** */
-const
-    assert          = require( 'assert' ),
-    { Edge, Block } = require( './types' ),
-    list            = require( 'yallist' );
-
-module.exports = {
-    BlockStatement,
-    BreakStatement,
-    CatchClause,
-    ContinueStatement,
-    DoWhileStatement,
-    ForStatement,
-    ForInStatement,
-    ForOfStatement,
-    IfStatement,
-    LabeledStatement,
-    ReturnStatement,
-    SwitchStatement,
-    SwitchCase,
-    ThrowStatement,
-    TryStatement,
-    WhileStatement,
-    ConditionalExpression,
-    syntax_default
-};
+import assert from 'assert';
+import { Block, Edge } from './types';
+import list from 'yallist';
 
 /**
  * @param {BlockStatement} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function BlockStatement( node, visitorHelper )
+export function BlockStatement( node, visitorHelper )
 {
     return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ), node.body, visitorHelper );
 }
@@ -52,7 +29,7 @@ function BlockStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function LabeledStatement( node, visitorHelper )
+export function LabeledStatement( node, visitorHelper )
 {
     const
         statement = visitorHelper.newBlock().from( visitorHelper.block );
@@ -96,7 +73,7 @@ function to_label( node, vh, type, targets )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock[]}
  */
-function BreakStatement( node, visitorHelper )
+export function BreakStatement( node, visitorHelper )
 {
     return to_label( node, visitorHelper, Edge.BREAK, visitorHelper.getBreakTarget );
 }
@@ -106,7 +83,7 @@ function BreakStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function CatchClause( node, visitorHelper )
+export function CatchClause( node, visitorHelper )
 {
     return visitorHelper.flatWalk( visitorHelper.newBlock().from( visitorHelper.block ).as( Block.CATCH ).add( node ), node.body, visitorHelper );
 }
@@ -116,7 +93,7 @@ function CatchClause( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function ContinueStatement( node, visitorHelper )
+export function ContinueStatement( node, visitorHelper )
 {
     return to_label( node, visitorHelper, Edge.CONTINUE, visitorHelper.getLoopTarget );
 }
@@ -126,7 +103,7 @@ function ContinueStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function DoWhileStatement( node, visitorHelper )
+export function DoWhileStatement( node, visitorHelper )
 {
     const
         { newBlock, block } = visitorHelper;
@@ -170,7 +147,7 @@ function DoWhileStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function ForStatement( node, visitorHelper )
+export function ForStatement( node, visitorHelper )
 {
     const
         { newBlock, block } = visitorHelper;
@@ -239,7 +216,7 @@ function ForStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function ForInStatement( node, visitorHelper )
+export function ForInStatement( node, visitorHelper )
 {
     const { newBlock, block } = visitorHelper;
 
@@ -261,7 +238,7 @@ function ForInStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function ForOfStatement( node, visitorHelper )
+export function ForOfStatement( node, visitorHelper )
 {
     return ForInStatement( node, visitorHelper );
 }
@@ -291,7 +268,7 @@ function ForOfStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock[]}
  */
-function IfStatement( node, visitorHelper )
+export function IfStatement( node, visitorHelper )
 {
     let test       = visitorHelper.newBlock()
         .as( Block.TEST )
@@ -321,7 +298,7 @@ function IfStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function ReturnStatement( node, visitorHelper )
+export function ReturnStatement( node, visitorHelper )
 {
     visitorHelper.block.add( node ).defer_edge_type( Edge.RETURN );
     visitorHelper.toExit.push( visitorHelper.block );
@@ -447,7 +424,7 @@ function ReturnStatement( node, visitorHelper )
  * @param {SwitchStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  */
-function SwitchStatement( node, visitorHelper )
+export function SwitchStatement( node, visitorHelper )
 {
     const { newBlock, block } = visitorHelper;
 
@@ -543,7 +520,7 @@ function SwitchStatement( node, visitorHelper )
  * @param {SwitchCase|AnnotatedNode} node
  * @return {?CFGBlock}
  */
-function SwitchCase( node )
+export function SwitchCase( node )
 {
     throw new Error( `We hit a switch case which shouldn't happen, node: ${node}` );
 }
@@ -553,7 +530,7 @@ function SwitchCase( node )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function ThrowStatement( node, visitorHelper )
+export function ThrowStatement( node, visitorHelper )
 {
     visitorHelper.block.add( node ).as( Block.THROW ).edge_as( Edge.EXCEPTION );
     return null;
@@ -574,7 +551,7 @@ function ThrowStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock|CFGBlock[]}
  */
-function TryStatement( node, visitorHelper )
+export function TryStatement( node, visitorHelper )
 {
     let { newBlock, block } = visitorHelper,
         finalizer,
@@ -599,7 +576,7 @@ function TryStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function WhileStatement( node, visitorHelper )
+export function WhileStatement( node, visitorHelper )
 {
     const { newBlock, block } = visitorHelper;
 
@@ -624,7 +601,7 @@ function WhileStatement( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock[]}
  */
-function ConditionalExpression( node, visitorHelper )
+export function ConditionalExpression( node, visitorHelper )
 {
     const { newBlock, block } = visitorHelper;
 
@@ -660,7 +637,7 @@ function ConditionalExpression( node, visitorHelper )
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
  */
-function syntax_default( node, visitorHelper )
+export function syntax_default( node, visitorHelper )
 {
     return visitorHelper.block.add( node );
 }

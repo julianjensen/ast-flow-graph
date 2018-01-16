@@ -7,18 +7,11 @@
 "use strict";
 
 import DFS from 'traversals';
-import { iterative, create_dom_tree, reverse_graph } from 'dominators';
-// import assert from 'assert';
-import clc from 'cli-color';
+import { create_dom_tree, iterative, reverse_graph } from 'dominators';
 import { inspect as _inspect } from 'util';
+import chalk from 'chalk';
 
 const
-    // { DFS }            = require( 'traversals' ),
-    // {
-    //     iterative,
-    //     create_dom_tree,
-    //     reverse_graph
-    // }                  = require( 'dominators' ),
     union              = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
     _intersection      = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
     intersection       = ( a, b ) => _intersection( ...( a.size < b.size ? [ a, b ] : [ b, a ] ) ),
@@ -49,38 +42,36 @@ export const
     obj = o => typeof o === 'object' && !array( o ) && o !== null,
     has = ( o, name ) => obj( o ) && Reflect.has( o, name ),
     inspect = ( o, d ) => _inspect( o, number( d ) ? { depth: d } : obj( d ) ? d : {} ),
-    // assert             = require( 'assert' ),
-    // clc                = require( 'cli-color' ),
-    warn               = clc.xterm( 220 ),
-    error              = clc.xterm( 196 ),
-    info               = clc.xterm( 117 ),
+    warn               = s => chalk.hex( '#ffd700' )( s ), // xterm( 220 ),
+    error              = s => chalk.hex( '#ff0000' )( s ), // xterm( 196 ),
+    info               = s => chalk.hex( '#87d7ff' )( s ), // xterm( 117 ),
     log                = console.log.bind( console );
 
 export const
     colors             = {
         dark:  {
-            green:  clc.xterm( 34 ),
-            blue:   clc.xterm( 26 ),
-            cyan:   clc.xterm( 45 ),
-            purple: clc.xterm( 57 ),
-            red:    clc.xterm( 161 ),
-            orange: clc.xterm( 167 ),
-            yellow: clc.xterm( 184 ),
-            pink:   clc.xterm( 170 ),
-            gray:   clc.xterm( 248 )
+            green:  s => chalk.hex( '#00af00' )( s ), // 34
+            blue:   s => chalk.hex( '#005fd7' )( s ), // 26
+            cyan:   s => chalk.hex( '#00d7ff' )( s ), // 45
+            purple: s => chalk.hex( '#5f00ff' )( s ), // 57
+            red:    s => chalk.hex( '#d7005f' )( s ), // 161
+            orange: s => chalk.hex( '#d75f5f' )( s ), // 167
+            yellow: s => chalk.hex( '#d7d700' )( s ), // 184
+            pink:   s => chalk.hex( '#d75fd7' )( s ), // 170
+            gray:   s => chalk.hex( '#a8a8a8' )( s ) // 248
         },
         light: {
-            green:  clc.xterm( 118 ),
-            blue:   clc.xterm( 39 ),
-            cyan:   clc.xterm( 123 ),
-            purple: clc.xterm( 147 ),
-            red:    clc.xterm( 196 ),
-            orange: clc.xterm( 208 ),
-            yellow: clc.xterm( 226 ),
-            pink:   clc.xterm( 213 ),
-            gray:   clc.xterm( 252 )
+            green:  s => chalk.hex( '#87ff00' )( s ), // 118
+            blue:   s => chalk.hex( '#00afff' )( s ), // 39
+            cyan:   s => chalk.hex( '#87ffff' )( s ), // 123
+            purple: s => chalk.hex( '#afafff' )( s ), // 147
+            red:    s => chalk.hex( '#ff0000' )( s ), // 196
+            orange: s => chalk.hex( '#ff8700' )( s ), // 208
+            yellow: s => chalk.hex( '#ffff00' )( s ), // 226
+            pink:   s => chalk.hex( '#ff87ff' )( s ), // 213
+            gray:   s => chalk.hex( '#d0d0d0' )( s ) // 252
         },
-        white: clc.xterm( 255 )
+        white: s => chalk.hex( '#ffffff' )( s )
     };
 
 _inspect.defaultOptions = { depth: 4, colors: true };
