@@ -6,22 +6,25 @@
  *********************************************************************************************************************/
 "use strict";
 
+import assert from 'assert';
+import {
+    get_from_function,
+    isBaseFunction
+} from './ast-vars';
+import { analyze } from 'escope';
+import { traverse } from 'estraverse';
+import { parse, Syntax, VisitorKeys } from 'espree';
+
 const
-    assert             = require( 'assert' ),
-    {
-        get_from_function,
-        isBaseFunction
-    }                  = require( './ast-vars' ),
+    // escope             = require( 'escope' ),
+    // estraverse         = require( 'estraverse' ),
+    // { traverse }       = estraverse,
 
-    escope             = require( 'escope' ),
-    estraverse         = require( 'estraverse' ),
-    { traverse }       = estraverse,
-
-    espree             = require( 'espree' ),
-    {
-        Syntax,
-        VisitorKeys
-    }                  = espree,
+    // espree             = require( 'espree' ),
+    // {
+    //     Syntax,
+    //     VisitorKeys
+    // }                  = espree,
 
     { isArray: array } = Array,
     nodeString         = function() {
@@ -35,7 +38,7 @@ const
 let stableSort = 0;
 
 /** */
-class AST
+export default class AST
 {
     /**
      * @param {string} source
@@ -61,7 +64,8 @@ class AST
 
         this.source        = source;
         this.renameOffsets = [];
-        this.root          = this.ast = espree.parse( source, options );
+        // this.root          = this.ast = espree.parse( source, options );
+        this.root          = this.ast = parse( source, options );
 
         this.nodesByIndex = [];
         this.functions    = [ get_from_function( this.ast ) ];
@@ -69,13 +73,16 @@ class AST
         let index   = 0,
             labeled = [];
 
-        this.traverse( ( node, parent ) => {
+        // this.traverse( ( node, parent ) => {
+        this.walker( ( node, parent, _, field, findex ) => {
             this.nodesByIndex[ index ] = node;
             node.index                 = index++;
             node.parent                = parent;
             node.cfg                   = null;
             node.toString              = nodeString;
             node.level                 = 0;
+            node.field                 = field;
+            node.fieldIndex            = findex;
 
             if ( node.type === Syntax.LabeledStatement ) labeled.push( node );
 
@@ -91,9 +98,12 @@ class AST
                 } );
             }
 
+
+
         } );
 
-        this.escope = escope.analyze( this.ast, {
+        // this.escope = escope.analyze( this.ast, {
+        this.escope = analyze( this.ast, {
             ecmaVersion: 6,
             sourceType:  options.sourceType,
             directive:   true
@@ -311,5 +321,3 @@ class AST
         return lines.map( ( l, i ) => `${i.toString().padStart( 3 )}. ${l}` ).join( '\n' );
     }
 }
-
-module.exports = AST;

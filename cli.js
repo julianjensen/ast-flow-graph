@@ -6,11 +6,13 @@
  *********************************************************************************************************************/
 "use strict";
 
+require( '@std/esm' )( module, { esm: 'all' } );
+
 const
+    CFG        = require( './src/cfg' ),
     path       = require( 'path' ),
     promisify  = require( 'util' ).promisify,
     version    = require( path.join( __dirname, 'package.json' ) ).version,
-    CFG        = require( './index' ),
     fs         = require( 'fs' ),
     stat       = promisify( fs.stat ),
     writeFile  = promisify( fs.writeFile ),

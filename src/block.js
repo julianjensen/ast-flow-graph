@@ -5,9 +5,23 @@
  * @date 18-Dec-2017
  *********************************************************************************************************************/
 "use strict";
+// @ts-check
+
+import assert from 'assert';
+import { Block, Edge, enum_to_string } from './types';
 
 const
-    assert             = require( 'assert' ),
+        MAX_EDGES_TO_PRINT = 7,
+        SPACE_PER_EDGE =     4,
+        LEFT_EDGES =         ' <-- ', // ' ←── ',
+        RIGHT_EDGES =        ' --> ', // ' ──→ ',
+        AST_NODES =          ' => ',
+        TRUE_EDGE =          '+', // '✔',
+        FALSE_EDGE =         '-', // '✖',
+        START_NODE =         '+', // '→',
+        EXIT_NODE =          '$', // '⛔',
+    // }
+    // assert             = require( 'assert' ),
     {
         outputOptions: {
                            MAX_EDGES_TO_PRINT,
@@ -21,7 +35,7 @@ const
                            EXIT_NODE
                        },
 
-        Block, Edge, enum_to_string
+        // Block, Edge, enum_to_string
     }                  = require( './types' ),
 
     digits             = ( n, d = 2, pre = '', post = '' ) => `${pre}${n}`.padStart( d ) + post,
@@ -36,7 +50,7 @@ const
  */
 
 /** */
-class CFGBlock
+export default class CFGBlock
 {
     /**
      * @param {number} id
@@ -456,4 +470,4 @@ class CFGBlock
     }
 }
 
-module.exports = CFGBlock;
+// module.exports = CFGBlock;

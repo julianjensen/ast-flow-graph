@@ -9,15 +9,15 @@
 const
     Table              = require( 'cli-table2' ),
     chalk              = require( 'chalk' ),
-    log                = ( ...args ) => console.log( ...args ),
     string             = s => typeof s === 'string',
     { isArray: array } = Array,
     headline           = s => chalk.yellowBright( s ),
     header             = s => chalk.cyanBright( s ),
     row                = r => r.map( s => chalk.whiteBright( s ) );
 
+export const log = ( ...args ) => console.log( ...args );
 
-/**
+    /**
  * @param {string|string[]|string[][]} hdr
  * @param {string[]|string[][]} [headers]
  * @param {string[][]} [rows]
@@ -65,7 +65,7 @@ function _as_table( hdr, headers, rows )
  * @param {string[]|string[][]} [headers]
  * @param {string[][]} [rows]
  */
-function as_table( hdr, headers, rows )
+export function as_table( hdr, headers, rows )
 {
 
     log( _as_table( hdr, headers, rows ).toString() );
@@ -77,17 +77,22 @@ function as_table( hdr, headers, rows )
  * @param {string[]|string[][]} [headers]
  * @param {string[][]} [rows]
  */
-function start_table( hdr, headers, rows )
+export function start_table( hdr, headers, rows )
 {
     return _as_table( hdr, headers, rows );
 }
 
-module.exports = {
-    log,
-    as_table,
-    start_table,
-    str_table( hdr, headers, rows )
-    {
-        return _as_table( hdr, headers, rows ).toString();
-    }
-};
+export function str_table( hdr, headers, rows )
+{
+    return _as_table( hdr, headers, rows ).toString();
+}
+
+// module.exports = {
+//     log,
+//     as_table,
+//     start_table,
+//     str_table( hdr, headers, rows )
+//     {
+//         return _as_table( hdr, headers, rows ).toString();
+//     }
+// };

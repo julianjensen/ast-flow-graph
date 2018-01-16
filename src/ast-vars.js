@@ -6,15 +6,18 @@
  *********************************************************************************************************************/
 "use strict";
 
-const
-    assert         = require( 'assert' ),
-    { Syntax }     = require( 'espree' ),
-    { flatten }    = require( './utils' ),
-    isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression,
-    circ           = { prop: () => circ, index: () => circ, assign: () => circ };
+import assert from 'assert';
+import { Syntax } from 'espree';
+import { flatten } from './utils';
+// const
+//     assert         = require( 'assert' ),
+//     { Syntax }     = require( 'espree' ),
+//     { flatten }    = require( './utils' ),
+const circ           = { prop: () => circ, index: () => circ, assign: () => circ };
 
+export const isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression;
 
-/**
+    /**
  * @param {AnnotatedNode|BaseNode|Node} node
  * @return {*}
  */
@@ -281,7 +284,7 @@ function assignment_node( ast, block, node, recurse )
  * @param {AnnotatedNode|Pattern|VariableDeclarator|AssignmentExpression|AssignmentPattern|UpdateExpression} node
  * @param {function} recurse
  */
-function assignment( ast, block, node, recurse )
+export function assignment( ast, block, node, recurse )
 {
     let lhs;
 
@@ -434,7 +437,7 @@ function add_to_block( block, name, type, index, isDecl, implied, renameTarget )
  * @param {string} [whatToGet='all']
  * @return {Array<Node>|string|CFGInfo}
  */
-function get_from_function( node, whatToGet = 'all' )
+export function get_from_function( node, whatToGet = 'all' )
 {
     if ( node.type === Syntax.Program )
     {

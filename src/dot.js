@@ -54,7 +54,7 @@ const
  * @param {DotOptions} opts
  * @return {string}
  */
-function dot( opts )
+export default function dot( opts )
 {
     const
         {
@@ -145,4 +145,4 @@ function dot( opts )
     return graphLines.join( '\n' );
 }
 
-module.exports = dot;
+// module.exports = dot;

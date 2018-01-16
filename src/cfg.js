@@ -6,10 +6,14 @@
  *********************************************************************************************************************/
 "use strict";
 
+import AST from './ast';
+import create_new_cfg from './leader';
+import { assign } from './utils';
+
 const
-    AST            = require( './ast' ),
-    create_new_cfg = require( './leader' ),
-    assign         = require( './utils' ).assign,
+    // AST            = require( './ast' ),
+    // create_new_cfg = require( './leader' ),
+    // assign         = require( './utils' ).assign,
     defaultOptions = {
         ssaSource: false,
         parser:    {
@@ -27,7 +31,7 @@ const
     };
 
 /** */
-class CFG
+export default class CFG
 {
     /**
      * @param {string} source
@@ -102,4 +106,4 @@ class CFG
     }
 }
 
-module.exports = CFG;
+// module.exports = CFG;

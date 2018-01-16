@@ -1,23 +1,30 @@
 /** ******************************************************************************************************************
- * @file Describe what utils does.
+` * @file Describe what utils does.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
  * @date 01-Jan-2018
  *********************************************************************************************************************/
 "use strict";
 
+import DFS from 'traversals';
+import { iterative, create_dom_tree, reverse_graph } from 'dominators';
+// import assert from 'assert';
+import clc from 'cli-color';
+import { inspect as _inspect } from 'util';
+
 const
-    { DFS }            = require( 'traversals' ),
-    {
-        iterative,
-        create_dom_tree,
-        reverse_graph
-    }                  = require( 'dominators' ),
+    // { DFS }            = require( 'traversals' ),
+    // {
+    //     iterative,
+    //     create_dom_tree,
+    //     reverse_graph
+    // }                  = require( 'dominators' ),
     union              = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
     _intersection      = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
     intersection       = ( a, b ) => _intersection( ...( a.size < b.size ? [ a, b ] : [ b, a ] ) ),
 
-    getset             = o => o.hasOwnProperty( 'get' ) || o.hasOwnProperty( 'set' ),
+    getset             = o => o.hasOwnProperty( 'get' ) || o.hasOwnProperty( 'set' );
+export const
     /**
      * Checks for `typeof f === 'function'`
      * @param {*} f
@@ -30,18 +37,26 @@ const
      */
     bool               = b => typeof b === 'boolean',
     number             = n => typeof n === 'number',
-    inspect            = require( 'util' ).inspect,
+    isNumber           = n => /^[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?$/.test( n ),
+    // _inspect            = require( 'util' ).inspect,
     string             = s => typeof s === 'string',
-    toStr              = x => Object.prototype.toString.call( x ),
-    { isArray: array } = Array,
-    obj                = o => typeof o === 'object' && !array( o ) && o !== null,
-    has                = ( o, name ) => obj( o ) && Reflect.has( o, name ),
-    assert             = require( 'assert' ),
-    clc                = require( 'cli-color' ),
+    toStr              = x => Object.prototype.toString.call( x );
+
+export const
+    { isArray: array } = Array;
+
+export const
+    obj = o => typeof o === 'object' && !array( o ) && o !== null,
+    has = ( o, name ) => obj( o ) && Reflect.has( o, name ),
+    inspect = ( o, d ) => _inspect( o, number( d ) ? { depth: d } : obj( d ) ? d : {} ),
+    // assert             = require( 'assert' ),
+    // clc                = require( 'cli-color' ),
     warn               = clc.xterm( 220 ),
     error              = clc.xterm( 196 ),
     info               = clc.xterm( 117 ),
-    log                = console.log.bind( console ),
+    log                = console.log.bind( console );
+
+export const
     colors             = {
         dark:  {
             green:  clc.xterm( 34 ),
@@ -68,8 +83,9 @@ const
         white: clc.xterm( 255 )
     };
 
+_inspect.defaultOptions = { depth: 4, colors: true };
 
-function make_flow( blocks, _idoms )
+export function make_flow( blocks, _idoms )
 {
     const
         tree = {};
@@ -178,7 +194,7 @@ function make_flow( blocks, _idoms )
  * @param {Boolean} [deep=true]
  * @return {Array}
  */
-function flatten( arr, result = [], deep = true )
+export function flatten( arr, result = [], deep = true )
 {
     if ( !Array.isArray( arr ) ) return [ arr ];
 
@@ -334,7 +350,7 @@ function deep_copy( src, dest = {}, cb = null, includeSymbols = false )
     return _deep_copy( src, dest, cb, includeSymbols );
 }
 
-function assign( ...objs )
+export function assign( ...objs )
 {
     return objs.reduce( ( all, cur ) => deep_copy( cur, all ), {} );
 }
@@ -350,7 +366,7 @@ function trace_class( cls )
             else if ( has( x, '_preds' ) )
                 return 'Edges';
             else if ( obj( x ) )
-                return inspect( x, { depth: 0, colors: false } );
+                return _inspect( x, { depth: 0, colors: false } );
             else if ( array( x ) )
             {
                 x = x.map( stringer );
@@ -406,14 +422,48 @@ function trace_class( cls )
     }
 }
 
-module.exports = {
-    colors,
-    warn,
-    info,
-    error,
-    flatten,
-    make_flow,
-    clone: deep_copy,
-    assign,
-    trace_class
-};
+/**
+ *
+ * @param {object} obj
+ * @param {string} path
+ * @param {*} [value]
+ * @return {*}
+ */
+export function deep_object_set( obj, path, value )
+{
+    if ( !obj || !string( path ) ) throw new Error( `deep_object_set() has bad parameters, obj = ${obj}, path = ${path}` );
+
+    const
+        p     = path.split( '.' ),
+        field = p.pop();
+
+    let tip = obj;
+
+    for ( const part of p )
+        tip = tip[ part ] = tip[ part ] || {};
+
+    if ( arguments.length === 2 ) return tip[ field ];
+
+    tip[ field ] = string( value ) && isNumber( value ) ? Number( value ) : value;
+
+    return obj;
+}
+
+export const clone = deep_copy;
+
+// module.exports = {
+//     // colors,
+//     // warn,
+//     // info,
+//     // error,
+//     // flatten,
+//     // make_flow,
+//     // clone: deep_copy,
+//     // assign,
+//     // trace_class,
+//     deep_object_set,
+//     // inspect,
+//     // array,
+//     // obj,
+//     // func
+// };

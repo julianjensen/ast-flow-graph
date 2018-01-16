@@ -6,9 +6,12 @@
  *********************************************************************************************************************/
 "use strict";
 
+import { Edge, enum_to_string } from './types';
+import { reverse_graph } from 'dominators';
+
 const
-    { Edge, enum_to_string } = require( './types' ),
-    { reverse_graph }        = require( 'dominators' ),
+    // { Edge, enum_to_string } = require( './types' ),
+    // { reverse_graph }        = require( 'dominators' ),
     code                     = ( from, to ) => `${from}->${to}`,
     index                    = block => typeof block === 'object' && !Array.isArray( block ) && block !== null ? block.id : block;
 
@@ -40,7 +43,7 @@ function blockEdge( index, _type = Edge.NONE )
     return self;
 }
 
-class Edges
+export default class Edges
 {
     constructor( bm )
     {
@@ -139,9 +142,7 @@ class Edges
             be       = this.edgeInfo.get( _code ),
             edgeType = be.type();
 
-        newTargets.forEach( ( target, i ) => {
-            this.add( from, index( target ), edgeType );
-        } );
+        newTargets.forEach( target => this.add( from, index( target ), edgeType ) );
 
         if ( be )
             this.edgeInfo.delete( _code );
@@ -313,4 +314,4 @@ class Edges
     }
 }
 
-module.exports = Edges;
+// module.exports = Edges;

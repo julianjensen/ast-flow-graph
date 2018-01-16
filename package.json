@@ -56,9 +56,11 @@
         "viz.js": "^1.8.0"
     },
     "dependencies": {
+        "@std/esm": "^0.19.3",
         "cli-table2": "^0.2.0",
         "common-tags": "^1.5.1",
         "dominators": "^1.1.1",
+        "dts-gen": "^0.5.7",
         "escodegen": "^1.9.0",
         "escope": "^3.6.0",
         "espree": "^3.5.2",
@@ -67,6 +69,7 @@
         "sprintf-js": "^1.1.1",
         "traversals": "^1.0.15",
         "typescript": "^2.6.2",
+        "vscode-textmate": "^3.2.0",
         "yallist": "^3.0.2"
     }
 }

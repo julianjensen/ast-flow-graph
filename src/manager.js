@@ -6,21 +6,32 @@
  *********************************************************************************************************************/
 "use strict";
 
-const
-    assert          = require( 'assert' ),
-    { warn, error } = require( './utils' ),
-    { postOrder }   = require( 'traversals' ),
-    dot             = require( './dot' ),
-    vars            = require( './variables' ),
-    { assignment }  = require( './ast-vars' ),
-    CFGBlock        = require( './block' ),
-    { Block, Edge } = require( './types' ),
-    Edges           = require( './edges' );
+import assert from 'assert';
+import { warn, error } from './utils';
+import { postOrder } from 'traversals';
+import dot from './dot';
+import vars from './variables';
+import { assignment } from './ast-vars';
+import CFGBlock from './block';
+import { Block, Edge } from './types';
+import Edges from './edges';
+
+
+// const
+    // assert          = require( 'assert' ),
+    // { warn, error } = require( './utils' ),
+    // { postOrder }   = require( 'traversals' ),
+    // dot             = require( './dot' ),
+    // vars            = require( './variables' ),
+    // { assignment }  = require( './ast-vars' ),
+    // CFGBlock        = require( './block' ),
+    // { Block, Edge } = require( './types' ),
+    // Edges           = require( './edges' );
 
 /**
  * @type {Iterable<CFGBlock>}
  */
-class BlockManager
+export default class BlockManager
 {
     /**
      * @param {AST} ast
@@ -316,4 +327,4 @@ class BlockManager
 
 BlockManager.blockId = 0;
 
-module.exports = BlockManager;
+// module.exports = BlockManager;

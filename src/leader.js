@@ -7,11 +7,16 @@
 
 "use strict";
 
+import { str_table } from './dump';
+import { Block, Edge } from './types';
+import BlockManager from './manager';
+import visitors from './visitors';
+
 const
-    { str_table }      = require( './dump' ),
-    { Block, Edge }    = require( './types' ),
-    BlockManager       = require( './manager' ),
-    visitors           = require( './visitors' ),
+    // { str_table }      = require( './dump' ),
+    // { Block, Edge }    = require( './types' ),
+    // BlockManager       = require( './manager' ),
+    // visitors           = require( './visitors' ),
     { isArray: array } = Array;
 
 
@@ -20,7 +25,7 @@ const
  * @param {AST} ast
  * @param {CFGOptions} options
  */
-function create_new_cfg( cfgInfo, ast, options )
+export default function create_new_cfg( cfgInfo, ast, options )
 {
 
     ast.root         = cfgInfo.node;
@@ -162,4 +167,4 @@ function flat_walker( block, nodes, visitorHelper )
     return visitorHelper.block;
 }
 
-module.exports = create_new_cfg;
+// module.exports = create_new_cfg;
