@@ -148,7 +148,7 @@ export default function variables( bm, ast, topScope )
              * since it will invariably be of the same type ('use' or 'def) with one exception, namely
              * assignment operators other than `=`. For example, `a += b` is a definition of `a` but is also
              * a read ('use') with the identifier `a` at the same index for both 'use' and 'def'. In that case,
-             * we favor 'use' before 'def' since the read of `a` is technically an RHS 'read' and, hencem happens
+             * we favor 'use' before 'def' since the read of `a` is technically an RHS 'read' and, hence happens
              * before the definition.
              *
              * In all of those cases, the name will be same same and therefore the same length. However, we get
@@ -208,6 +208,14 @@ export default function variables( bm, ast, topScope )
     }
 
     /**
+     * f(x) = c1 op1 ( x op2 c2 )
+     *
+     * g(y) = ( x op2 c2 ) => op2( current.x, current.c2 )
+     * f( c1, op1, result, op2, c2 ) => op1( current.c1, g(y) )
+     * ∀block result = op0( ∀adj -> f( c1, op1, adj.result, op2, c2 ) )
+     *
+     * f( result ) = succOrPreds .reduce (
+     *
      * See citation for this in the comment for {@link live_out}
      *
      * @see {@link live_out}
