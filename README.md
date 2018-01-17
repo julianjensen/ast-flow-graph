@@ -27,6 +27,33 @@ const
 cfg() // true
 ```
 
+## CLI Usage
+
+```
+
+  cfg version 1.0.0
+
+Usage
+
+  cfg [-d] [-g] [-s ...sources] [-t] [-n ...names] [-r] [-v] [-h] [...files]
+
+Options
+
+  -d, --debug             Turn on debugging mode. Warning: This will generate a lot of output.
+  -g, --graph             Create a .dot file for graph-viz
+  -o, --output string     If this option is present, save the .dot files to this directory.
+  -s, --source string[]   Input source file. Can also be specified at the end of the command line.
+  -t, --table             Output a table showing all CFG blocks
+  -l, --lines             Output CFG blocks as text
+  -n, --name string[]     Specify a function name to only display information for that function.
+  -v, --verbose           Output additional information
+  -h, --help              Display this help message
+
+Description
+
+  Creates a CFG from one or more source files.
+```
+
 ## License
 
 MIT © [Julian Jensen](https://github.com/julianjensen/cfg)
