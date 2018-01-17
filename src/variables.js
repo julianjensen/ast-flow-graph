@@ -9,6 +9,7 @@
 import { assign } from './utils';
 import { DFS } from 'traversals';
 import { create_dom_tree, frontiers_from_succs, iterative, make_dom, reverse_graph } from 'dominators';
+import create_data_flow from './data-flow';
 
 const
     union         = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
@@ -64,7 +65,8 @@ export default function variables( bm, ast, topScope )
         postDomFrontiers,
         options = {
             ssaSource: true
-        };
+        },
+        liveOutDataFlow;
 
     options = assign( {}, options, bm.options );
 
@@ -181,10 +183,7 @@ export default function variables( bm, ast, topScope )
     {
         init();
 
-        // const
-        //     liveOuts = analyze( blocks.map( b => b.ueVar ), blocks.map( b => b.notVarKill ), [], 'uui', { adjacent: 'succs', direction: 'rpost' } );
-
-        // liveOuts.forEach( ( lo, i ) => blocks[ i ].liveOut = lo );
+        liveOutDataFlow = create_data_flow( { c1: 'ueVar', result: 'liveOut', c2: 'notVarKill', op0: 'union', op1: 'union', op2: 'intersection', start: () => new Set() } );
 
         let changed = true;
 
@@ -226,7 +225,10 @@ export default function variables( bm, ast, topScope )
     {
         const
             prevSize = block.liveOut,
-            curSet   = block.liveOut = block.succs.map( si => blocks[ si ] ).reduce( ( u, s ) => union( u, union( s.ueVar, intersection( s.liveOut, s.notVarKill ) ) ), new Set() );
+            // curSet   = block.liveOut = block.succs.map( si => blocks[ si ] ).reduce( ( u, s ) => union( u, union( s.ueVar, intersection( s.liveOut, s.notVarKill ) ) ), new Set() ),
+            curSet   = block.liveOut = liveOutDataFlow( block.succs.map( si => blocks[ si ] ) );
+
+
 
         return curSet.size > prevSize;
     }
