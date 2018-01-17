@@ -650,14 +650,13 @@ describe( 'cfg', function() {
         expect( extract( cfg.generate( 'code_coverage' ).bm ) ).to.eql( code_coverage );
     } );
 
-    it( 'should create pretty tables and ugly text', () => {
+    it( 'should create pretty tables', () => {
         const
             cfg = new CFG( testFiles[ 5 ] ).generate(),
-            tables = cfg.toTable(),
-            text = `${cfg}`;
+            tables = cfg.toTable();
 
         expect( tables ).to.eql( toTable6 );
-        expect( text.split( /\r?\n/ ).map( l => l.trim() ).join( '\n' ) ).to.eql( toText6 );
+        // expect( text.split( /\r?\n/ ).map( l => l.trim() ).join( '\n' ) ).to.eql( toText6 );
     } );
 
     it( 'should iterate over graphs', () => {
