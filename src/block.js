@@ -6,33 +6,14 @@
  *********************************************************************************************************************/
 "use strict";
 
-import assert from 'assert';
+import assert                          from 'assert';
 import { Block, Edge, enum_to_string } from './types';
-import { colors } from './utils';
+import { display_options, array }      from './utils';
 
 const
-    fancy = true,
-    dull = {
-        LEFT_EDGES: ' <-- ', // ' ←── ',
-        RIGHT_EDGES: ' --> ', // ' ──→ ',
-        AST_NODES: ' => ',
-        TRUE_EDGE: '+', // '✔',
-        FALSE_EDGE: '-', // '✖',
-        START_NODE: '+', // '→',
-        EXIT_NODE: '$' // '⛔',
-    },
-    nice = {
-        LEFT_EDGES: ' ←── ',
-        RIGHT_EDGES: ' ──→ ',
-        AST_NODES: ' => ',
-        TRUE_EDGE: colors.dark.green( '✔' ),
-        FALSE_EDGE: colors.light.red( '✖' ),
-        START_NODE: colors.dark.orange( '→' ),
-        EXIT_NODE: '⛔'
-    },
     {
-        SPACE_PER_EDGE = 4,
-        MAX_EDGES = 7,
+        SPACE_PER_EDGE,
+        MAX_EDGES,
         LEFT_EDGES,
         RIGHT_EDGES,
         AST_NODES,
@@ -40,21 +21,19 @@ const
         FALSE_EDGE,
         START_NODE,
         EXIT_NODE
-    } = fancy ? nice : dull,
-
+    }       = display_options( true ),
     padLeft = ( n, target, pre, post ) => [ ' '.repeat( target - `${n}`.length ), pre, `${n}`, post ],
-    digits             = ( n, d = 2, pre = '', post = '' ) => padLeft( n, d - 1, pre, post ).join( '' ), // pre + `${n}`.padStart( d - ( pre || post ? 1 : 0 ) ) + post,
-    { isArray: array } = Array;
+    digits  = ( n, d = 2, pre = '', post = '' ) => padLeft( n, d - 1, pre, post ).join( '' ); // pre + `${n}`.padStart( d - ( pre || post ? 1 : 0 ) ) + post;
 
-/**
- * @typedef {object} EdgeInfo
- * @property {function(number):EdgeInfo} as
- * @property {function(number):EdgeInfo} not
- * @property {function(number):boolean} isa
- * @property {number} index
- */
+    /**
+     * @typedef {object} EdgeInfo
+     * @property {function(number):EdgeInfo} as
+     * @property {function(number):EdgeInfo} not
+     * @property {function(number):boolean} isa
+     * @property {number} index
+     */
 
-/** */
+    /** */
 export default class CFGBlock
 {
     /**
@@ -72,10 +51,10 @@ export default class CFGBlock
         this.nodes = [];
 
         this.lastEdge = null;
-        this.types = Block.NORMAL;
+        this.types    = Block.NORMAL;
 
         this.createdBy = '';
-        this.scope = null;
+        this.scope     = null;
     }
 
     /**
@@ -347,13 +326,13 @@ export default class CFGBlock
             l = this.last() || {},
             {
                 start: {
-                    line: start = 0
-                }
+                           line: start = 0
+                       }
             } = f.loc,
             {
                 end: {
-                    line: end = 0
-                }
+                         line: end = 0
+                     }
             } = l.loc;
 
         if ( start === end )
@@ -436,7 +415,7 @@ export default class CFGBlock
         if ( !/^\s*$/.test( leftEdges ) ) leftEdges = leftEdges + ' ' + LEFT_EDGES;
         if ( !/^\s*$/.test( rightEdges ) ) rightEdges = RIGHT_EDGES + ' ' + rightEdges;
 
-        leftEdges = leftEdges.padStart( MAX_EDGES * SPACE_PER_EDGE + 8 );
+        leftEdges  = leftEdges.padStart( MAX_EDGES * SPACE_PER_EDGE + 8 );
         rightEdges = rightEdges.padEnd( MAX_EDGES * SPACE_PER_EDGE + 8 );
 
         return [

@@ -92,7 +92,13 @@ const
             header: 'Description', content: "Creates a CFG from one or more source files."
         }
     ],
-    args       = cli( argumentos );
+    args       = cli( argumentos ),
+    extract = bm => bm.blocks.map( b => ( {
+        id:        b.id,
+        nodes:     b.nodes.map( n => n.type ),
+        types:     b.types,
+        createdBy: b.createdBy
+    } ) );
 
 if ( args.help )
 {
@@ -139,6 +145,9 @@ function process_file( source )
         cfg.generate();
         cfg.forEach( async c => await single_function( cfg, c.name, false ) );
     }
+
+    // fs.writeFileSync( './test/table6.txt', cfg.toTable() );
+    // fs.writeFileSync( './test/text6.txt', `${cfg}` );
 }
 
 async function single_function( cfg, name, generate )
@@ -172,4 +181,6 @@ async function single_function( cfg, name, generate )
         else
             console.log( `${dot}\n\n` );
     }
+
+    // console.log( extract( cfg.by_name( 'code_coverage' ).bm ) );
 }

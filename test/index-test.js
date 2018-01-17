@@ -9,6 +9,7 @@
 import { expect } from 'chai';
 import fs from 'fs';
 import CFG from '../src/cfg';
+import AST from '../src/ast';
 
 const
     testFiles       = [
@@ -16,7 +17,8 @@ const
         fs.readFileSync( './test-data/cfg-test-02.js', 'utf8' ),
         fs.readFileSync( './test-data/cfg-test-03.js', 'utf8' ),
         fs.readFileSync( './test-data/cfg-test-04.js', 'utf8' ),
-        fs.readFileSync( './test-data/cfg-test-05.js', 'utf8' )
+        fs.readFileSync( './test-data/cfg-test-05.js', 'utf8' ),
+        fs.readFileSync( './test-data/cfg-test-06.js', 'utf8' )
     ],
     a01             = [
         { id: 0, nodes: [], types: 1, createdBy: '' },
@@ -546,13 +548,76 @@ const
             { id: 10, nodes: [], types: 4, createdBy: '' },
             { id: 11, nodes: [], types: 2, createdBy: '' }
         ],
+    code_coverage = [
+        { id: 0, nodes: [], types: 1, createdBy: '' },
+        {
+            id:        1,
+            nodes:     [ 'VariableDeclaration', 'TryStatement' ],
+            types:     4,
+            createdBy: ''
+        },
+        {
+            id:        2,
+            nodes:     [ 'CatchClause', 'ExpressionStatement', 'ExpressionStatement' ],
+            types:     512,
+            createdBy: ''
+        },
+        {
+            id:        3,
+            nodes:     [ 'ExpressionStatement', 'Identifier' ],
+            types:     4,
+            createdBy: 'CFG: BlockStatement'
+        },
+        { id: 4, nodes: [ 'Literal' ], types: 8, createdBy: '' },
+        {
+            id:        5,
+            nodes:     [ 'ExpressionStatement', 'BreakStatement' ],
+            types:     4,
+            createdBy: ''
+        },
+        { id: 6, nodes: [ 'Literal' ], types: 8, createdBy: '' },
+        { id: 7, nodes: [ 'Literal' ], types: 8, createdBy: '' },
+        { id: 8, nodes: [ 'Literal' ], types: 8, createdBy: '' },
+        {
+            id:        9,
+            nodes:     [ 'ExpressionStatement' ],
+            types:     4,
+            createdBy: ''
+        },
+        { id: 10, nodes: [ 'Literal' ], types: 8, createdBy: '' },
+        {
+            id:        11,
+            nodes:     [ 'ExpressionStatement', 'BreakStatement' ],
+            types:     4,
+            createdBy: ''
+        },
+        {
+            id:        12,
+            nodes:     [ 'ExpressionStatement' ],
+            types:     4,
+            createdBy: ''
+        },
+        { id: 13, nodes: [ 'Literal' ], types: 8, createdBy: '' },
+        {
+            id:        14,
+            nodes:     [ 'ExpressionStatement', 'BreakStatement' ],
+            types:     4,
+            createdBy: ''
+        },
+        { id: 15, nodes: [], types: 4, createdBy: '' },
+        { id: 16, nodes: [], types: 2, createdBy: '' }
+    ],
     sourceToTests   = [
         { a01, a02, a03, b01, b02, b03 },
         { 'constructor': _constructor },
         { 'pp$1.parseClass': pp$1parseClass3 },
         { 'pp$1.parseClass': pp$1parseClass4 },
-        { blah }
+        { blah },
+        { code_coverage }
     ],
+    toTable6 = fs.readFileSync( './test/table6.txt', 'utf8' ),
+    toText6 = fs.readFileSync( './test/text6.txt', 'utf8' ),
+    dotFile = fs.readFileSync( './test/dot3.txt', 'utf8' ).split( /\r?\n/ ).map( l => l.trim() ).join( '\n' ),
     extract         = bm => bm.blocks.map( b => ( {
         id:        b.id,
         nodes:     b.nodes.map( n => n.type ),
@@ -561,6 +626,63 @@ const
     } ) );
 
 describe( 'cfg', function() {
+
+    it( 'should initialize a source module', () => {
+        const cfg = new CFG( testFiles[ 2 ] );
+
+        expect( cfg ).to.be.instanceof( CFG );
+        expect( cfg.ast ).to.be.instanceof( AST );
+
+    } );
+
+    it( 'should generate some graphs', () => {
+        const cfg = new CFG( testFiles[ 2 ] );
+
+        cfg.generate();
+        expect( cfg.cfgs ).to.be.an( 'array' );
+        expect( cfg.cfgs ).to.have.length( 3 );
+    } );
+
+    it( 'should generate a graph by name', () => {
+        const cfg = new CFG( testFiles[ 5 ] );
+
+        expect( cfg.generate( 'kersploink' ) ).to.be.null;
+        expect( extract( cfg.generate( 'code_coverage' ).bm ) ).to.eql( code_coverage );
+    } );
+
+    it( 'should create pretty tables and ugly text', () => {
+        const
+            cfg = new CFG( testFiles[ 5 ] ).generate(),
+            tables = cfg.toTable(),
+            text = `${cfg}`;
+
+        expect( tables ).to.eql( toTable6 );
+        expect( text ).to.eql( toText6 );
+    } );
+
+    it( 'should iterate over graphs', () => {
+        const
+            cfg = new CFG( testFiles[ 0 ] ).generate(),
+            seen = [],
+            altSeen = [];
+
+        for ( const cgraph of cfg )
+            if ( cgraph.name !== 'main' ) seen.push( cgraph.name );
+
+        cfg.forEach( cgraph => cgraph.name !== 'main' && altSeen.push( cgraph.name ) );
+
+        expect( seen ).to.have.members( Object.keys( sourceToTests[ 0 ] ) );
+        expect( altSeen ).to.have.members( Object.keys( sourceToTests[ 0 ] ) );
+    } );
+
+    it( 'should generate a graph-viz dot file', () => {
+        const
+            cfg = new CFG( testFiles[ 2 ] ).generate(),
+            fn = cfg.by_name( 'pp$1.parseClass' ),
+            df = cfg.create_dot( fn ).split( /\r?\n/ ).map( l => l.trim() ).join( '\n' );
+
+        expect( df ).to.eql( dotFile );
+    } );
 
     it( 'graph troublesome code', () => {
         const

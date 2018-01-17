@@ -60,28 +60,6 @@ function _as_table( hdr, headers, rows )
     return output;
 }
 
-/**
- * @param {string|string[]|string[][]} hdr
- * @param {string[]|string[][]} [headers]
- * @param {string[][]} [rows]
- */
-export function as_table( hdr, headers, rows )
-{
-
-    log( _as_table( hdr, headers, rows ).toString() );
-    log( '' );
-}
-
-/**
- * @param {string|string[]|string[][]} hdr
- * @param {string[]|string[][]} [headers]
- * @param {string[][]} [rows]
- */
-export function start_table( hdr, headers, rows )
-{
-    return _as_table( hdr, headers, rows );
-}
-
 export function str_table( hdr, headers, rows )
 {
     return _as_table( hdr, headers, rows ).toString();

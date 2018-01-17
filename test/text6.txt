@@ -1,0 +1,22 @@
+main:7-49
+     START      7-49                                        [38;5;174m→[39m0  ──→    1                                                       Program(0)
+      EXIT                                        0  ←──    1⛔                                                                 
+
+code_coverage:9-49
+     START                                                  [38;5;174m→[39m0  ──→    1                                                       
+    NORMAL     11-30                              0  ←──    1  ──→    2  3                                                    VariableDeclaration(9), TryStatement(18)
+     CATCH     22-25                              1  ←──    2  ──→    3                                                       CatchClause(43), ExpressionStatement(46), ExpressionStatement(52)
+    NORMAL     29-32                           1  2  ←──    3  ──→    4 15                                CFG: BlockStatement ExpressionStatement(59), Identifier(73)
+      TEST        34                              3  ←──    4  ──→    5[38;5;34m✔[39m  6[38;5;196m✖[39m                            Literal(75)
+    NORMAL     34-35              [38;5;34m✔[39m4  ←──    5  ──→   15*                                                      ExpressionStatement(76), BreakStatement(80)
+      TEST        37             [38;5;196m✖[39m4  ←──    6  ──→    7[38;5;196m✖[39m  9[38;5;34m✔[39m                            Literal(82)
+      TEST        38             [38;5;196m✖[39m6  ←──    7  ──→    8[38;5;196m✖[39m  9[38;5;34m✔[39m                            Literal(84)
+      TEST        39             [38;5;196m✖[39m7  ←──    8  ──→    9[38;5;34m✔[39m 10[38;5;196m✖[39m                            Literal(86)
+    NORMAL        39   [38;5;34m✔[39m6  [38;5;34m✔[39m7  [38;5;34m✔[39m8  ←──    9  ──→   11                                                       ExpressionStatement(87)
+      TEST        41             [38;5;196m✖[39m8  ←──   10  ──→   11[38;5;34m✔[39m 13[38;5;196m✖[39m                            Literal(92)
+    NORMAL     41-42           9 [38;5;34m✔[39m10  ←──   11  ──→   15*                                                      ExpressionStatement(93), BreakStatement(97)
+    NORMAL        44            [38;5;196m✖[39m13  ←──   12  ──→   14                                                       ExpressionStatement(99)
+      TEST        46            [38;5;196m✖[39m10  ←──   13  ──→   14[38;5;34m✔[39m 12[38;5;196m✖[39m                            Literal(103)
+    NORMAL     46-47          12 [38;5;34m✔[39m13  ←──   14  ──→   15*                                                      ExpressionStatement(104), BreakStatement(110)
+    NORMAL                            3  *5 *11 *14  ←──   15  ──→   16                                                       
+      EXIT                                       15  ←──   16⛔                                                                 

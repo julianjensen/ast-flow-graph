@@ -8,7 +8,6 @@
 
 import AST from './ast';
 import create_new_cfg from './leader';
-import { assign } from './utils';
 
 const
     defaultOptions = {
@@ -35,7 +34,14 @@ export default class CFG
      */
     constructor( source, options = defaultOptions )
     {
-        this.options = assign( {}, defaultOptions, options );
+        const
+            ecma = Object.assign( {}, defaultOptions.parser.ecmaFeatures, options.parser && options.parser.ecmaFeatures || {} ),
+            p = Object.assign( {}, defaultOptions.parser, options.parser || {} );
+
+        this.options = Object.assign( {}, defaultOptions, options );
+        this.options.parser = p;
+        this.options.parser.ecmaFeatures = ecma;
+
         this.ast     = new AST( source, this.options.parser );
         this.cfgs    = [];
     }
@@ -52,7 +58,7 @@ export default class CFG
 
     /**
      * @param {string} [name]
-     * @return {Array<CFGInfo>}
+     * @return {Array<CFGInfo>|CFG}
      */
     generate( name )
     {
@@ -60,6 +66,7 @@ export default class CFG
         {
             for ( const func of this.ast.forFunctions() )
                 this.cfgs.push( create_new_cfg( func, this.ast, this.options ) );
+            return this;
         }
         else
         {
