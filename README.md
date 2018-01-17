@@ -10,6 +10,8 @@
 
 > Constructs a CFG for JavaScript source code.
 
+Need actual documentation here.
+
 ## Install
 
 ```sh
@@ -20,7 +22,7 @@ npm i cfg
 
 ```js
 const 
-    cfg = require( 'cfg' );
+    CFG = require( 'ast-flow-graph' );
 
 cfg() // true
 ```
