@@ -92,11 +92,6 @@ export default class Edges
         return this;
     }
 
-    debug_list()
-    {
-        [ ...this.edgeInfo.keys() ].sort().forEach( k => console.log( `${k} => ${this.edgeInfo.get( k ).type()}` ) );
-    }
-
     classify( from, to, ctype )
     {
         from = index( from );
@@ -193,11 +188,6 @@ export default class Edges
         return this;
     }
 
-    remove_pred( from, to )
-    {
-        return this.remove_succ( to, from );
-    }
-
     get_succs( from )
     {
         from = index( from );
@@ -270,18 +260,6 @@ export default class Edges
         } );
     }
 
-    preds_has( from, type )
-    {
-        from = index( from );
-
-        if ( !this.preds ) this.preds = reverse_graph( this.succs );
-
-        return this.preds.some( p => {
-            const be = this.edgeInfo.get( code( p, from ) );
-            return be && be.isa( type );
-        } );
-    }
-
     edges( from )
     {
         from = index( from );
@@ -297,11 +275,6 @@ export default class Edges
         return this._preds;
     }
 
-    set preds( p )
-    {
-        this._preds = p;
-    }
-
     pred_edges( _from )
     {
         const
@@ -311,5 +284,3 @@ export default class Edges
         return preds[ self ].map( p => ( { from: p, to: self, type: this.edgeInfo.get( code( p, self ) ) } ) );
     }
 }
-
-// module.exports = Edges;

@@ -98,8 +98,8 @@ export default function create_new_cfg( cfgInfo, ast, options )
         final = [ final ];
 
     cfg.toString = () => `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}\n${cfg.bm}`;
-    cfg.toTable  = () => str_table( `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}`, [ "TYPE", "LINES", "LEFT EDGES", "NODE", "RIGHT EDGES", "CREATED BY", "LIVEOUT", "UE", "KILL", "PHI", "AST" ], cfg.bm.toTable() );
-    cfg.bm.finish( final, cfg );
+    cfg.toTable  = () => str_table( `${cfg.name}:${cfg.lines[ 0 ]}-${cfg.lines[ 1 ]}`, [ "TYPE", "LINES", "LEFT EDGES", "NODE", "RIGHT EDGES", "CREATED BY", "AST" ], cfg.bm.toTable() );
+    cfg.bm.finish( final );
     return cfg;
 }
 
@@ -162,5 +162,3 @@ function flat_walker( block, nodes, visitorHelper )
 
     return visitorHelper.block;
 }
-
-// module.exports = create_new_cfg;

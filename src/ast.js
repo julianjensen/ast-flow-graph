@@ -7,13 +7,13 @@
 "use strict";
 
 import assert from 'assert';
-import { get_from_function, isBaseFunction } from './ast-vars';
+import { traverse, Syntax } from 'estraverse';
 import { analyze } from 'escope';
-import { traverse } from 'estraverse';
-import { parse, Syntax, VisitorKeys } from 'espree';
+import { parse, VisitorKeys } from 'espree';
 
 const
     { isArray: array } = Array,
+    isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression,
     nodeString         = function() {
         let keys = VisitorKeys[ this.type ].map( key => `${key}${array( this[ key ] ) ? '(' + this[ key ].length + ')' : ''}` ).join( ', ' );
 
@@ -54,8 +54,14 @@ export default class AST
         // this.root          = this.ast = espree.parse( source, options );
         this.root          = this.ast = parse( source, options );
 
+        this.escope = analyze( this.ast, {
+            ecmaVersion: 6,
+            sourceType:  options.sourceType,
+            directive:   true
+        } );
+
         this.nodesByIndex = [];
-        this.functions    = [ get_from_function( this.ast ) ];
+        this.functions    = [ this.get_from_function( this.ast ) ];
 
         let index   = 0,
             labeled = [];
@@ -74,7 +80,7 @@ export default class AST
             if ( node.type === Syntax.LabeledStatement ) labeled.push( node );
 
             if ( isBaseFunction( node ) )
-                this.functions.push( get_from_function( node ) );
+                this.functions.push( this.get_from_function( node ) );
 
             if ( node.type === Syntax.BlockStatement && node.body.length === 0 )
             {
@@ -90,12 +96,6 @@ export default class AST
         } );
 
         // this.escope = escope.analyze( this.ast, {
-        this.escope = analyze( this.ast, {
-            ecmaVersion: 6,
-            sourceType:  options.sourceType,
-            directive:   true
-        } );
-
         this.traverse( node => {
             const s    = this.node_to_scope( node );
             node.level = stepsUp( s );
@@ -214,13 +214,13 @@ export default class AST
             if ( !node ) return;
 
             const
-                isa = Array.isArray( node ),
+                isa = array( node ),
                 er  = !isa ? enter( node, parent, previous, field, index, next ) : true;
 
             if ( er !== false )
             {
                 VisitorKeys[ node.type ].forEach( key => {
-                    if ( Array.isArray( node[ key ] ) )
+                    if ( array( node[ key ] ) )
                     {
                         const arr = node[ key ];
 
@@ -306,5 +306,120 @@ export default class AST
         } );
 
         return lines.map( ( l, i ) => `${i.toString().padStart( 3 )}. ${l}` ).join( '\n' );
+    }
+
+    /**
+     * @param {FunctionDeclaration|FunctionExpression|MethodDefinition|ArrowFunctionExpression|Property|Node} node
+     * @param {string} [whatToGet='all']
+     * @return {Array<Node>|string|CFGInfo}
+     */
+    get_from_function( node, whatToGet = 'all' )
+    {
+        if ( node.type === Syntax.Program )
+        {
+            const pg = {
+                name:   'main',
+                params: [],
+                body:   grab_body( node ),
+                lines:  [ node.loc.start.line, node.loc.end.line ],
+                node
+            };
+
+            return whatToGet && whatToGet !== 'all' ? pg[ whatToGet ] : pg;
+        }
+
+        const
+            hopeForName = n => {
+                if ( n.type === Syntax.Identifier )
+                    return n.name;
+                else if ( n.type === Syntax.MemberExpression )
+                {
+                    if ( !n.computed && n.object.type === Syntax.Identifier && n.property.type === Syntax.Identifier ) return n.object.name + '.' + n.property.name;
+                    if ( !n.computed || n.object.type !== Syntax.Identifier || n.property.type !== Syntax.Identifier ) return null;
+                    // if ( n.object.name !== 'Symbol' && n.object.name !== 'super' ) return null;
+
+                    return n.object + '.' + n.property;
+
+                }
+                else if ( n.type === Syntax.MethodDefinition )
+                {
+                    if ( n.kind === 'constructor' )
+                        return 'constructor';
+                    else if ( n.kind === 'method' )
+                        return hopeForName( n.key );
+                    else
+                    {
+                        const _name = hopeForName( n.key );
+
+                        return typeof _name === 'string' ? _name + '.' + n.kind : _name;
+                    }
+                }
+                else if ( n.id )
+                    return hopeForName( n.id );
+                else if ( n.parent.type === Syntax.Property || n.parent.type === Syntax.MethodDefinition )
+                    return hopeForName( n.parent.key );
+                else if ( n.parent.type === Syntax.VariableDeclarator )
+                    return hopeForName( n.parent.id );
+                else if ( n.parent.type === Syntax.AssignmentExpression )
+                    return hopeForName( n.parent.left );
+
+                return 'anonymous';
+            };
+
+        if ( node.type === Syntax.Property || node.type === Syntax.MethodDefinition )
+            return this.get_from_function( node.value, whatToGet );
+        else if ( !isBaseFunction( node ) )
+            throw new SyntaxError( `No function found near ${node.type}, unable to find ${whatToGet}` );
+
+        return grab_info();
+
+        /**
+         * @param {AnnotatedNode|BaseFunction|MethodDefinition|Program} node
+         * @returns {?(AnnotatedNode|Array<AnnotatedNode>)}
+         */
+        function grab_body( node )
+        {
+            switch ( node.type )
+            {
+                case Syntax.Program:
+                case Syntax.FunctionDeclaration:
+                case Syntax.FunctionExpression:
+                case Syntax.ArrowFunctionExpression:
+                    return node.body.type === Syntax.BlockStatement ? node.body.body : node.body;
+
+                case Syntax.MethodDefinition:
+                    return grab_body( node.value );
+            }
+        }
+
+        /**
+         * @returns {*}
+         */
+        function grab_info()
+        {
+            switch ( whatToGet )
+            {
+                case 'name':
+                    return hopeForName( node );
+
+                case 'params':
+                    return node.params;
+
+                case 'body':
+                    return grab_body( node );
+
+                case 'lines':
+                    return [ node.loc.start.line, node.loc.end.line ];
+
+                default:
+                    return {
+                        name:   hopeForName( node ),
+                        params: node.params,
+                        body:   node.body.type === Syntax.BlockStatement ? node.body.body : node.body,
+                        lines:  [ node.loc.start.line, node.loc.end.line ],
+                        node
+                    };
+            }
+        }
     }
 }

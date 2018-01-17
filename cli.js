@@ -6,12 +6,12 @@
  *********************************************************************************************************************/
 "use strict";
 
-import CFG from './src/cfg';
-import path from 'path';
+import CFG           from './src/cfg';
+import path          from 'path';
 import { promisify } from 'util';
-import fs from 'fs';
-import cli from 'command-line-args';
-import usage from 'command-line-usage';
+import fs            from 'fs';
+import cli           from 'command-line-args';
+import usage         from 'command-line-usage';
 
 const
     version    = require( path.join( __dirname, 'package.json' ) ).version,
@@ -70,13 +70,6 @@ const
             multiple:     true
         },
         {
-            alias:        'r',
-            name:         'rewrite',
-            description:  "Rewrite source code to show φ functions (phi).",
-            type:         Boolean,
-            defaultValue: false
-        },
-        {
             alias:        'v',
             name:         'verbose',
             description:  "Output additional information",
@@ -96,7 +89,7 @@ const
         { header: 'Usage', content: `cfg [-d] [-g] [-s ...sources] [-t] [-n ...names] [-r] [-v] [-h] [...files]` },
         { header: 'Options', optionList: argumentos },
         {
-            header: 'Description', content: "Creates a CFG from one or more source files. Optionally, will also create an SSA form of the source."
+            header: 'Description', content: "Creates a CFG from one or more source files."
         }
     ],
     args       = cli( argumentos );
@@ -113,14 +106,13 @@ if ( !args.source && args.name && args.name.some( n => n.endsWith( '.js' ) ) )
     args.name   = args.name.filter( n => !n.endsWith( '.js' ) );
 }
 
-// console.log( 'args:', args );
 process_all();
 
 function process_all()
 {
     let str = '';
 
-    if ( args.source.length )
+    if ( args.source && args.source.length )
         args.source.forEach( async name => await process_file( fs.readFileSync( name, 'utf8' ) ) );
     else
     {
@@ -151,7 +143,7 @@ function process_file( source )
 
 async function single_function( cfg, name, generate )
 {
-    let hdr = `----------------------------------------------------------------------------------------------\nNEW FUNCTION: __FN__\n----------------------------------------------------------------------------------------------`;
+    let hdr = `------------------------------------------------------------------------------------------------------------\nNEW FUNCTION: __FN__\n------------------------------------------------------------------------------------------------------------`;
 
     const c = generate ? cfg.generate( name ) : cfg.by_name( name );
 

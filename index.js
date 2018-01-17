@@ -6,5 +6,5 @@
  *********************************************************************************************************************/
 "use strict";
 
-require( '@std/esm' )( module, { esm: 'all' } );
-module.exports = require( './src/cfg' );
+require = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
+module.exports = require( './src/cfg' ).default;
