@@ -27,38 +27,6 @@ const
     };
 
 /**
- * @param result
- * @param {function(Set, Set): Set} op2
- * @param {string} c2
- * @return {function(BlockThing):Set}
- */
-function right_side_expr( result, op2, c2 )
-{
-    return current => op2( current[ result ], current[ c2 ] );
-}
-
-/**
- * @param {string} c1
- * @param {function(Set, Set): Set} op1
- * @param {function(BlockThing): Set} rhs
- * @return {function(BlockThing): Set}
- */
-function left_and_right( c1, op1, rhs )
-{
-    return current => op1( current[ c1 ], rhs( current ) );
-}
-
-/**
- * @param {function(Set, Set): Set} op0
- * @param {function(BlockThing): Set} rest_calc
- * @return {function(Set, BlockThing): Set}
- */
-function accumulate( op0, rest_calc )
-{
-    return ( accum, current ) => op0( accum, rest_calc( current ) );
-}
-
-/**
  * @param {string} c1
  * @param {string} result
  * @param {string} c2
@@ -71,12 +39,10 @@ function accumulate( op0, rest_calc )
 export default function create_data_flow( { c1, result, c2, op0, op1, op2, start = () => new Set() } )
 {
     const
-        triOp = ( op, lhs, rhs ) => operators[ op ]( lhs, rhs ),
-        accum1 = ( acc, current ) => operators[ op0 ]( acc, triOp( op1, current[ c1 ], triOp( op2, current[ result ], current[ c2 ] ) ) ),
-        accum = accumulate( operators[ op0 ], left_and_right( c1, operators[ op1 ], right_side_expr( result, operators[ op2 ], c2 ) ) );
+        [ fn0, fn1, fn2 ] = [ operators[ op0 ], operators[ op1 ], operators[ op2 ] ];
 
-    return blocks => blocks.reduce( accum1, start() );
+    // 𝑓(𝐵ₓ) = ∀𝑋ₐ 𝑜𝑝₀ (𝐶₁ 𝑜𝑝₁ (𝑋ₐ 𝑜𝑝₂ 𝐶₂)) =>
+    // 𝑓(𝐵ₓ) =       ∀𝑋ₐ                           𝑜𝑝₀       𝑜𝑝₁ 𝐶₁        𝑜𝑝₂( 𝑋ₐ           𝐶₂ ) )
+    return blocks => blocks.reduce( ( acc, c ) => fn0( acc, fn1( c[ c1 ], fn2( c[ result ], c[ c2 ] ) ) ), start() );
 }
-
-
 
