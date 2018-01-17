@@ -616,7 +616,7 @@ const
         { code_coverage }
     ],
     toTable6 = fs.readFileSync( './test/table6.txt', 'utf8' ),
-    toText6 = fs.readFileSync( './test/text6.txt', 'utf8' ),
+    toText6 = fs.readFileSync( './test/text6.txt', 'utf8' ).split( /\r?\n/ ).map( l => l.trim() ).join( '\n' ),
     dotFile = fs.readFileSync( './test/dot3.txt', 'utf8' ).split( /\r?\n/ ).map( l => l.trim() ).join( '\n' ),
     extract         = bm => bm.blocks.map( b => ( {
         id:        b.id,
@@ -657,7 +657,7 @@ describe( 'cfg', function() {
             text = `${cfg}`;
 
         expect( tables ).to.eql( toTable6 );
-        expect( text ).to.eql( toText6 );
+        expect( text.split( /\r?\n/ ).map( l => l.trim() ).join( '\n' ) ).to.eql( toText6 );
     } );
 
     it( 'should iterate over graphs', () => {
