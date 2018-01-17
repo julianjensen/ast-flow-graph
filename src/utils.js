@@ -6,17 +6,11 @@
  *********************************************************************************************************************/
 "use strict";
 
-import DFS from 'traversals';
-import { create_dom_tree, iterative, reverse_graph } from 'dominators';
-import { inspect as _inspect } from 'util';
 import chalk from 'chalk';
 
 const
-    union              = ( a, b ) => [ ...b ].reduce( ( s, name ) => s.add( name ), a ),
-    _intersection      = ( small, large ) => [ ...small ].reduce( ( s, name ) => large.has( name ) ? s.add( name ) : s, new Set() ),
-    intersection       = ( a, b ) => _intersection( ...( a.size < b.size ? [ a, b ] : [ b, a ] ) ),
-
     getset             = o => o.hasOwnProperty( 'get' ) || o.hasOwnProperty( 'set' );
+
 export const
     /**
      * Checks for `typeof f === 'function'`
@@ -31,9 +25,7 @@ export const
     bool               = b => typeof b === 'boolean',
     number             = n => typeof n === 'number',
     isNumber           = n => /^[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?$/.test( n ),
-    // _inspect            = require( 'util' ).inspect,
-    string             = s => typeof s === 'string',
-    toStr              = x => Object.prototype.toString.call( x );
+    string             = s => typeof s === 'string';
 
 export const
     { isArray: array } = Array;
@@ -41,7 +33,6 @@ export const
 export const
     obj = o => typeof o === 'object' && !array( o ) && o !== null,
     has = ( o, name ) => obj( o ) && Reflect.has( o, name ),
-    inspect = ( o, d ) => _inspect( o, number( d ) ? { depth: d } : obj( d ) ? d : {} ),
     warn               = s => chalk.hex( '#ffd700' )( s ), // xterm( 220 ),
     error              = s => chalk.hex( '#ff0000' )( s ), // xterm( 196 ),
     info               = s => chalk.hex( '#87d7ff' )( s ), // xterm( 117 ),
@@ -73,111 +64,6 @@ export const
         },
         white: s => chalk.hex( '#ffffff' )( s )
     };
-
-_inspect.defaultOptions = { depth: 4, colors: true };
-
-export function make_flow( blocks, _idoms )
-{
-    const
-        tree = {};
-
-    tree.succs    = blocks.map( b => b.succs );
-    tree.preds    = reverse_graph( tree.succs );
-    tree.idoms    = _idoms || iterative( tree.succs );
-    tree.domSuccs = create_dom_tree( tree.idoms );
-    tree.domPreds = reverse_graph( tree.domSuccs );
-
-    /**
-     * subscriptNumbers = [ '₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉' ],
-     * subscriptPlus = '₊',
-     * subscriptMinus = '₋',
-     * subscriptEquals = '₌',
-     * subscriptParens = [ '₍', '₎' ]
-     *
-     * ∀i ∈ 𝑉
-     *  ∀e ∈ 𝐸ᵢ : 𝑓(x) = 𝘤₁ 𝑜𝑝₁ ( 𝑥 𝑜𝑝₂ 𝘤₂ )
-     *
-     *  @param {Array<Set>} c1
-     *  @param {Array<Set>} c2
-     *  @param {Array<Set>} [res=[]]
-     *  @param {string} [ops='uui']
-     *  @param {object} [opts]
-     */
-    function analyze( c1, c2, res = [], ops = 'uui', opts = { direction: 'rpost', adjacent: 'succs', useDomTree: false } )
-    {
-        const
-            op = n => ops[ n ] === 'u' ? union : intersection;
-
-
-        return _analyze( {
-            op1:        op( 1 ),
-            op2:        op( 2 ),
-            accumulate: op( 0 ),
-            adjacent:   opts.adjacent || 'succs',
-            result:     res,
-            constant1:  c1,
-            constant2:  c2,
-            direction:  opts.direction,
-            useDomTree: opts.useDomTree
-        } );
-    }
-
-    /**
-     * @param {DataFlow} dataFlow
-     * @return {Array<Set>}
-     */
-    function _analyze( dataFlow )
-    {
-        const
-            {
-                op1,
-                op2,
-                adjacent: _adjacent,
-                constant1,
-                constant2,
-                accumulate,
-                result,
-                direction
-            }        = dataFlow,
-            adjacent = dataFlow.useDomTree ? 'dom' + _adjacent[ 0 ].toUpperCase() + _adjacent.substr( 1 ) : _adjacent;
-
-
-        function _flow( index )
-        {
-            const
-                prevSize = result[ index ] ? result[ index ].size : -1,
-                curSet   = result[ index ] =
-                    tree[ adjacent ][ index ].reduce( ( u, i ) => accumulate( u, op1( constant1[ i ], op2( result[ i ] || new Set(), constant2[ i ] ) ) ), result && result[ index ] || new Set() );
-
-            return curSet.size !== prevSize;
-        }
-
-        let changed = true;
-
-        while ( changed )
-        {
-            changed = false;
-
-            if ( !direction )
-                changed = blocks.reduce( ( changed, block ) => _flow( block.id ) || changed, false );
-            else
-            {
-                DFS( tree[ adjacent ], {
-                    [ direction ]( blockIndex )
-                    {
-                        if ( _flow( blockIndex ) ) changed = true;
-                    }
-                } );
-            }
-        }
-
-        return result;
-    }
-
-    return {
-        analyze
-    };
-}
 
 /**
  * @param {?Array} arr
@@ -346,73 +232,6 @@ export function assign( ...objs )
     return objs.reduce( ( all, cur ) => deep_copy( cur, all ), {} );
 }
 
-function trace_class( cls )
-{
-    const
-        done     = new Set(),
-        p        = cls.prototype,
-        stringer = x => {
-            if ( has( x, 'id' ) )
-                return '' + x.id;
-            else if ( has( x, '_preds' ) )
-                return 'Edges';
-            else if ( obj( x ) )
-                return _inspect( x, { depth: 0, colors: false } );
-            else if ( array( x ) )
-            {
-                x = x.map( stringer );
-                if ( x.length > 20 )
-                    return '[ ' + x.slice( 0, 20 ).join( ', ' ) + ', ... ]';
-                else
-                    return `[ ${x.join( ', ' )} ]`;
-            }
-            else if ( number( x ) )
-                return '' + x;
-            else if ( x === void 0 )
-                return 'void';
-            else
-                return toStr( x );
-        },
-        callLine = ( lns, lnum ) => {
-            let ln = lns.slice( lnum, lnum + 1 )[ 0 ],
-                m  = ln.match( /^\s*at\s([^(]+)\(.*\/([-_a-zA-Z]+\.js):(\d+)/ );
-
-            if ( !m )
-            {
-                ln = lns.slice( lnum - 1, lnum )[ 0 ];
-                m  = ln.match( /^\s*at\s([^(]+)\(.*\/([-_a-zA-Z]+\.js):(\d+)/ );
-            }
-
-            return { site: m[ 1 ].trim(), file: m[ 2 ], line: m[ 3 ] };
-        };
-
-    for ( const [ name, desc ] of Object.entries( Object.getOwnPropertyDescriptors( p ) ) )
-    {
-        if ( !string( name ) || !func( desc.value ) || done.has( desc.value ) || name === 'toString' ) continue;
-
-        done.add( desc.value );
-
-        const fn = p[ name ];
-
-        p[ name ] = function( ...args ) {
-            const
-                __args = args.slice(),
-                debStr = cls.name + '::' + name + '( ',
-                caller = callLine( new Error().stack.split( /\r?\n/ ), 3 );
-
-            for ( const [ i, x ] of __args.entries() )
-                __args[ i ] = stringer( x );
-
-
-            const
-                r = fn.call( this, ...args );
-
-            if ( !name.startsWith( '_' ) ) log( debStr + __args.join( ', ' ) + ' ) -> ' + stringer( r ) + `(from function "${caller.site}" in ${caller.file} on line ${caller.line})` );
-            return r;
-        };
-    }
-}
-
 /**
  *
  * @param {object} obj
@@ -441,20 +260,3 @@ export function deep_object_set( obj, path, value )
 }
 
 export const clone = deep_copy;
-
-// module.exports = {
-//     // colors,
-//     // warn,
-//     // info,
-//     // error,
-//     // flatten,
-//     // make_flow,
-//     // clone: deep_copy,
-//     // assign,
-//     // trace_class,
-//     deep_object_set,
-//     // inspect,
-//     // array,
-//     // obj,
-//     // func
-// };

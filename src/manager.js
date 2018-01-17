@@ -6,15 +6,13 @@
  *********************************************************************************************************************/
 "use strict";
 
-import assert from 'assert';
+import assert          from 'assert';
 import { error, warn } from './utils';
-import { postOrder } from 'traversals';
-import dot from './dot';
-import vars from './variables';
-import { assignment } from './ast-vars';
-import CFGBlock from './block';
+import { postOrder }   from 'traversals';
+import dot             from './dot';
+import CFGBlock        from './block';
 import { Block, Edge } from './types';
-import Edges from './edges';
+import Edges           from './edges';
 
 /**
  * @type {Iterable<CFGBlock>}
@@ -47,14 +45,10 @@ export default class BlockManager
     }
 
     /**
-     *
      * @param {Array<CFGBlock>} final
-     * @param {CFGInfo} cfg
      */
-    finish( final, cfg )
+    finish( final )
     {
-        const ast = this.ast;
-
         if ( final )
             final.forEach( f => this.toExitNode( f ) );
 
@@ -68,25 +62,6 @@ export default class BlockManager
         this.clean();
 
         BlockManager.blockId = this.size = this.blocks.length;
-
-        this.vars = vars( this, ast, cfg.topScope );
-
-        this.forEach( b => {
-            const node = b.first();
-            if ( node ) b.scope = ast.node_to_scope( node );
-            b.prepare( this.vars );
-        } );
-
-        if ( /Function/.test( ast.root.type ) && ast.root.params && ast.root.params )
-        {
-            let fb = ast.root.cfg || this.blocks[ 0 ];
-            ast.root.params.forEach( pnode => assignment( ast, fb, pnode, () => {} ) );
-        }
-
-        this.forEach( block => ast.flat_walker( block.nodes, ( n, rec ) => assignment( ast, block, n, rec ) ) );
-
-        this.vars.finish();
-        this.vars.live_out();
     }
 
     /**
@@ -314,5 +289,3 @@ export default class BlockManager
 }
 
 BlockManager.blockId = 0;
-
-// module.exports = BlockManager;

@@ -102,5 +102,3 @@ export default class CFG
         return cfg.bm.create_dot( title );
     }
 }
-
-// module.exports = CFG;

@@ -95,27 +95,6 @@ export default class CFGBlock
     }
 
     /**
-     * @param {variables} vars
-     */
-    prepare( vars )
-    {
-        this.vars = vars;
-    }
-
-    /**
-     * @param {string} name     - Variable name
-     * @param {string} type     - Either 'use' or 'def'
-     * @param index             - AST node index
-     * @param {boolean} isDecl  - If this is a declaration, it may shadow a similarly named variable in an outer scope
-     * @param {boolean} implied - Identifier part of a chain
-     * @param {boolean} renameTarget
-     */
-    add_var( name, type, index, isDecl, implied = false, renameTarget = false ) // eslint-disable-line max-params
-    {
-        this.vars.add_var( this, { name, type, index, isDecl, implied, renameTarget } );
-    }
-
-    /**
      * @return {boolean}
      */
     isEmpty()
@@ -143,11 +122,9 @@ export default class CFGBlock
         if ( !cb ) return this;
 
         if ( !array( cb ) )
-        {
-            cb = [ cb ];
-        }
-
-        cb.forEach( block => block.to( this ) );
+            cb.to( this );
+        else
+            cb.forEach( block => block.to( this ) );
 
         return this;
     }
@@ -169,14 +146,12 @@ export default class CFGBlock
     {
         if ( !cb ) return this;
 
+        if ( array( cb ) && cb.length === 1 ) cb = cb[ 0 ];
+
         if ( !array( cb ) )
-        {
-            this.lastEdge = this.edges.add( this, cb ).lastEdge;
-        }
+            cb.lastEdge = this.lastEdge = this.edges.add( this, cb ).lastEdge;
         else
-        {
-            cb.forEach( block => this.lastEdge = this.edges.add( this, block ).lastEdge );
-        }
+            cb.forEach( block => block.lastEdge = this.lastEdge = this.edges.add( this, block ).lastEdge );
 
         return this;
     }
@@ -223,9 +198,11 @@ export default class CFGBlock
      * @param {number|CFGBlock} to
      * @return {CFGBlock}
      */
-    edge_as( edgeType, to = this.lastEdge.to )
+    edge_as( edgeType, to )
     {
-        this.edges.classify( this, to, edgeType );
+        to = to || to === 0 ? to : this.lastEdge.to;
+
+        this.edges.classify( this, to || this.lastEdge.to, edgeType );
         return this;
     }
 
@@ -424,57 +401,12 @@ export default class CFGBlock
     }
 
     /**
-     * @return {string}
-     */
-    toString1()
-    {
-        const
-            st    = this.isa( Block.START ) ? START_NODE : '',
-            ex    = this.isa( Block.EXIT ) ? EXIT_NODE : ' ',
-            nodes = this.nodes.length ? AST_NODES + this.nodes.map( n => n.type + '(' + n.index + ')' ).join( ', ' ) : '',
-            lines = this.lines();
-
-        let self,
-            lo,
-            _phi,
-            phi,
-            liveOut;
-
-        if ( this.vars )
-        {
-            self = this.vars.get( this );
-            lo = self.liveOut;
-            _phi = self.phi;
-            liveOut = lo && lo.size ? '\n    live: ' + [ ...lo ].join( ', ' ) : '';
-            phi = Object.keys( _phi ).join( ', ' );
-            if ( phi ) phi = `\n     phi: ${phi}`;
-        }
-        else
-        {
-            liveOut = '';
-            phi = '';
-        }
-
-        let leftEdges  = this.pred_edge_types().map( ( c, i ) => c + digits( this.preds[ i ].id, SPACE_PER_EDGE ) ).join( '' ) + LEFT_EDGES,
-            rightEdges = RIGHT_EDGES + this.succ_edge_types().map( ( c, i ) => c + digits( this.succs[ i ].id, SPACE_PER_EDGE ) ).join( '' );
-
-        leftEdges = leftEdges !== LEFT_EDGES ? leftEdges : ( ' '.repeat( SPACE_PER_EDGE - 1 ) + LEFT_EDGES );
-
-        return leftEdges + digits( this.id, SPACE_PER_EDGE, st, ex ) + rightEdges + ' [' + enum_to_string( Block, this.types ).join( ' ' ) + lines + '] ' +
-               ( this.createdBy ? 'from ' + this.createdBy : '' ) +
-               nodes + liveOut + phi;
-    }
-
-    /**
      * Headers are
-     * TYPE / LINES / LEFT EDGES / NODE / RIGHT EDGES / CREATED BY / LIVEOUT / UE / KILL / PHI / AST
+     * TYPE / LINES / LEFT EDGES / NODE / RIGHT EDGES / CREATED BY / AST
      * @return {Array<string>}
      */
     toRow()
     {
-        const
-            toStrs = arr => arr.map( grp => grp.join( ' ' ) ).join( '\n' );
-
         let preds      = this.preds,
             succs      = this.succs,
             leftEdges  = this.pred_edge_types().map( ( c, i ) => digits( preds[ i ].id, SPACE_PER_EDGE, c, '' ) ).join( '' ),
@@ -487,17 +419,11 @@ export default class CFGBlock
             digits( this.id, SPACE_PER_EDGE, this.isa( Block.START ) ? START_NODE : '', this.isa( Block.EXIT ) ? EXIT_NODE : '' ),
             rightEdges,
             this.createdBy || '',
-            this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).liveOut ], 1 ) ) : '',
-            this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).ueVar ], 1 ) ) : '',
-            this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).varKill ], 1 ) ) : '',
-            this.vars ? this.split_by( [ ...this.vars.get( this ).phi.keys() ], 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : '',
             this.nodes.length ? this.split_by( this.nodes.map( n => n.type + '(' + n.index + ')' ), 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : ''
         ];
     }
 
     /**
-     * Headers are
-     * TYPE / LINES / LEFT EDGES / NODE / RIGHT EDGES / CREATED BY / LIVEOUT / UE / KILL / PHI / AST
      * @return {Array<string>}
      */
     toString()
@@ -520,60 +446,8 @@ export default class CFGBlock
             digits( this.id, SPACE_PER_EDGE, this.isa( Block.START ) ? START_NODE : '', this.isa( Block.EXIT ) ? EXIT_NODE : '' ),
             rightEdges,
             ( this.createdBy || '' ).padStart( 26 ),
-            // this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).liveOut ], 1 ) ) : '',
-            // this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).ueVar ], 1 ) ) : '',
-            // this.vars ? toStrs( this.split_by( [ ...this.vars.get( this ).varKill ], 1 ) ) : '',
-            // this.vars ? this.split_by( [ ...this.vars.get( this ).phi.keys() ], 1 ).map( sect => sect.join( ' ' ) ).join( '\n' ) : '',
             this.nodes.length ? this.split_by( this.nodes.map( n => n.type + '(' + n.index + ')' ), 1 ).map( sect => sect.join( ' ' ) ).join( ', ' ) : ''
         ].join( ' ' );
     }
 
-
-    /**
-     * @param rdf
-     */
-    mark( rdf )
-    {
-        const
-            workList = [],
-            marks    = [];     // marks.length === nodes.length
-
-        function isCritical( node )
-        {
-
-        }
-
-        // @todo assign each def/use to a top node in the flat list for the block: x <- y op z (we ignore any line that have no def/use)
-        this.nodes.forEach( ( node, i ) => {
-            if ( isCritical( node ) )
-            {
-                marks[ i ] = true;
-                workList[ i ].push( node );
-            }
-        } );
-
-        while ( workList.length )
-        {
-            // for every 'use' mark the corresponding 'def' op
-
-            // if ( this.isa( BlockManager.TEST ) )
-            // for every block in post dominance frontier of this
-            // i.e. rdf.forEach( b => mark branch from this to b and add branch to workList )
-        }
-    }
-
-    /**
-     * @param marks
-     */
-    sweep( marks )
-    {
-        this.nodes.forEach( ( op, i ) => {
-            if ( marks[ i ] ) return;
-
-            // if op is branch rewrite op to to jump to nearest marked post dom
-            // else if not a jump delete op
-        } );
-    }
 }
-
-// module.exports = CFGBlock;

@@ -144,5 +144,3 @@ export default function dot( opts )
 
     return graphLines.join( '\n' );
 }
-
-// module.exports = dot;

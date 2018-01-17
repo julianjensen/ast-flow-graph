@@ -17,7 +17,7 @@ const
 
 export const log = ( ...args ) => console.log( ...args );
 
-    /**
+/**
  * @param {string|string[]|string[][]} hdr
  * @param {string[]|string[][]} [headers]
  * @param {string[][]} [rows]
@@ -86,13 +86,3 @@ export function str_table( hdr, headers, rows )
 {
     return _as_table( hdr, headers, rows ).toString();
 }
-
-// module.exports = {
-//     log,
-//     as_table,
-//     start_table,
-//     str_table( hdr, headers, rows )
-//     {
-//         return _as_table( hdr, headers, rows ).toString();
-//     }
-// };
