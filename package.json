@@ -1,6 +1,6 @@
 {
     "name": "ast-flow-graph",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Constructs a CFG for JavaScript source code.",
     "main": "index.js",
     "bin": "_cli.js",
