@@ -18,8 +18,8 @@
         "changelog": "npx auto-changelog -p -l 10 && git add CHANGELOG.md",
         "marktoc": "npx replace -s -q '### Changelog' '<!-- START doctoc -->\\\n<!-- END doctoc -->' CHANGELOG.md",
         "toc": "npx doctoc --github --title \"### Changelog\" CHANGELOG.md",
-        "docs": "documentation readme index.js --infer-private='^_.*'  -s API --github",
-        "docsite": "documentation build index.js --infer-private='^_.*'  -f html -o docs",
+        "docs": "npx documentation readme index.js --infer-private='^_.*'  -s API --github",
+        "docsite": "npx documentation build index.js --infer-private='^_.*'  -f html -o docs",
         "version": "run-s -s changelog marktoc toc"
     },
     "repository": {
@@ -55,7 +55,6 @@
         "cli-table2": "^0.2.0",
         "command-line-args": "^5.0.0",
         "command-line-usage": "^4.1.0",
-        "documentation": "^5.3.5",
         "dominators": "^1.1.1",
         "escope": "^3.6.0",
         "espree": "^3.5.2",
