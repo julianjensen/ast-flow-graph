@@ -8,7 +8,7 @@
         "lint": "eslint index.js lib/**/*.js src/**/*.js",
         "check": "npm run lint -s && dependency-check package.json --entry index.js",
         "test": "rm -rf node_modules/.cache coverage/ && nyc --reporter=lcov --reporter=text --produce-source-map --require=@std/esm mocha",
-        "coveralls": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+        "coveralls": "nyc report --reporter=text-lcov | coveralls",
         "postcoveralls": "rimraf ./coverage",
         "prepublish": "npm test",
         "patch": "npm version patch && npm publish",
@@ -22,7 +22,7 @@
     },
     "repository": {
         "types": "git",
-        "url": "https://github.com/julianjensen/cfg.git"
+        "url": "https://github.com/julianjensen/ast-flow-graph.git"
     },
     "keywords": [
         "cfg",
@@ -33,9 +33,9 @@
     "author": "Julian Jensen <jjdanois@gmail.com>",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/julianjensen/cfg/issues"
+        "url": "https://github.com/julianjensen/ast-flow-graph/issues"
     },
-    "homepage": "https://github.com/julianjensen/cfg#readme",
+    "homepage": "https://github.com/julianjensen/ast-flow-graph#readme",
     "devDependencies": {
         "@types/esprima": "^4.0.1",
         "@types/estree": "^0.0.38",
