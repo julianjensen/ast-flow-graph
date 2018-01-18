@@ -1,6 +1,6 @@
 {
     "name": "ast-flow-graph",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Constructs a CFG for JavaScript source code.",
     "main": "index.js",
     "bin": "_cli.js",
@@ -8,7 +8,8 @@
         "lint": "eslint index.js lib/**/*.js src/**/*.js",
         "check": "npm run lint -s && dependency-check package.json --entry index.js",
         "test": "rm -rf node_modules/.cache coverage/ && nyc --reporter=lcov --reporter=text --produce-source-map --require=@std/esm mocha",
-        "coveralls": "nyc report --reporter=text-lcov | coveralls",
+        "coveralls": "npm test && nyc report --reporter=text-lcov | coveralls",
+        "report": "nyc report --reporter=text-lcov",
         "postcoveralls": "rimraf ./coverage",
         "prepublish": "npm test",
         "patch": "npm version patch && npm publish",
