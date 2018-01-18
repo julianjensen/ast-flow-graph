@@ -1,4 +1,4 @@
-# cfg
+# ast-flow-graph
 
 [![Coveralls Status][coveralls-image]][coveralls-url]
 [![Build Status][travis-image]][travis-url]
