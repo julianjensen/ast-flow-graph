@@ -83,26 +83,26 @@ Description
 
 ## License
 
-MIT © [Julian Jensen](https://github.com/julianjensen/cfg)
+MIT © [Julian Jensen](https://github.com/julianjensen/ast-flow-graph)
 
-[coveralls-url]: https://coveralls.io/github/julianjensen/cfg?branch=master
-[coveralls-image]: https://coveralls.io/repos/github/julianjensen/cfg/badge.svg?branch=master
+[coveralls-url]: https://coveralls.io/github/julianjensen/ast-flow-graph?branch=master
+[coveralls-image]: https://coveralls.io/repos/github/julianjensen/ast-flow-graph/badge.svg?branch=master
 
-[travis-url]: https://travis-ci.org/julianjensen/cfg
-[travis-image]: http://img.shields.io/travis/julianjensen/cfg.svg
+[travis-url]: https://travis-ci.org/julianjensen/ast-flow-graph
+[travis-image]: http://img.shields.io/travis/julianjensen/ast-flow-graph.svg
 
-[depstat-url]: https://gemnasium.com/github.com/julianjensen/cfg
-[depstat-image]: https://gemnasium.com/badges/github.com/julianjensen/cfg.svg
+[depstat-url]: https://gemnasium.com/github.com/julianjensen/ast-flow-graph
+[depstat-image]: https://gemnasium.com/badges/github.com/julianjensen/ast-flow-graph.svg
 
-[npm-url]: https://badge.fury.io/js/cfg
-[npm-image]: https://badge.fury.io/js/cfg.svg
+[npm-url]: https://badge.fury.io/js/ast-flow-graph
+[npm-image]: https://badge.fury.io/js/ast-flow-graph.svg
 
-[license-url]: https://github.com/julianjensen/cfg/blob/master/LICENSE
+[license-url]: https://github.com/julianjensen/ast-flow-graph/blob/master/LICENSE
 [license-image]: https://img.shields.io/badge/license-MIT-brightgreen.svg
 
-[snyk-url]: https://snyk.io/test/github/julianjensen/cfg
-[snyk-image]: https://snyk.io/test/github/julianjensen/cfg/badge.svg
+[snyk-url]: https://snyk.io/test/github/julianjensen/ast-flow-graph
+[snyk-image]: https://snyk.io/test/github/julianjensen/ast-flow-graph/badge.svg
 
-[david-dm-url]: https://david-dm.org/julianjensen/cfg
-[david-dm-image]: https://david-dm.org/julianjensen/cfg.svg
+[david-dm-url]: https://david-dm.org/julianjensen/ast-flow-graph
+[david-dm-image]: https://david-dm.org/julianjensen/ast-flow-graph.svg
 
