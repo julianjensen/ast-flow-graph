@@ -13,7 +13,16 @@ import { parse, VisitorKeys } from 'espree';
 
 const
     { isArray: array } = Array,
+    /**
+     * @param {string} type
+     * @return {boolean}
+     * @private
+     */
     isBaseFunction = ( { type } ) => type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression,
+    /**
+     * @return {string}
+     * @private
+     */
     nodeString         = function() {
         let keys = VisitorKeys[ this.type ].map( key => `${key}${array( this[ key ] ) ? '(' + this[ key ].length + ')' : ''}` ).join( ', ' );
 
@@ -24,7 +33,11 @@ const
 
 let stableSort = 0;
 
-/** */
+/**
+ * @class
+ * @param {string} source
+ * @param {object} options
+ */
 export default class AST
 {
     /**
@@ -117,6 +130,10 @@ export default class AST
         } );
     }
 
+    /**
+     * @param {AnnotatedNode} node
+     * @return {*}
+     */
     node_to_scope( node )
     {
         let scope = this.escope.acquire( node );
@@ -132,6 +149,9 @@ export default class AST
         return scope;
     }
 
+    /**
+     * @type {Iterable<FunctionInfo>}
+     */
     *forFunctions()
     {
         yield *this.functions;
@@ -141,6 +161,7 @@ export default class AST
      * @param {AnnotatedNode} start
      * @param {string} label
      * @return {?CFGBlock}
+     * @private
      */
     find_label( start, label )
     {
@@ -187,7 +208,7 @@ export default class AST
     }
 
     /**
-     * @param {BaseNode|Node} [node]
+     * @param {AnnotatedNode|BaseNode|Node} node
      * @param {function} [enter]
      * @param {function} [leave]
      */
@@ -237,6 +258,12 @@ export default class AST
         _walker( node || this.root, null, null, null, 0, null );
     }
 
+    /**
+     * Iterate over all nodes in a block without recursing into sub-nodes.
+     *
+     * @param {Array<AnnotatedNode>|AnnotatedNode} nodes
+     * @param {function(AnnotatedNode,function(AnnotatedNode):boolean):boolean} cb
+     */
     flat_walker( nodes, cb )
     {
         if ( !array( nodes ) )
@@ -253,6 +280,12 @@ export default class AST
             ++i;
     }
 
+    /**
+     * Callback for each visitor key for a given node.
+     *
+     * @param {AnnotatedNode} node
+     * @param {function(Array<AnnotatedNode>|AnnotatedNode)} cb
+     */
     call_visitors( node, cb )
     {
         if ( !node || !VisitorKeys[ node.type ] ) return;
@@ -260,6 +293,12 @@ export default class AST
         VisitorKeys[ node.type ].forEach( key => node[ key ] && cb( node[ key ] ) );
     }
 
+    /**
+     * Add a new line to the source code.
+     *
+     * @param {number} lineNumber   - 0-based line number
+     * @param {string} sourceLine   - The source line to add
+     */
     add_line( lineNumber, sourceLine )
     {
         const renumIndex = this.blankLines.findIndex( ln => ln <= lineNumber );
@@ -280,6 +319,10 @@ export default class AST
         this.addedLines.push( { lineNumber: lineNumber * 10000 + stableSort++, sourceLine } );
     }
 
+    /**
+     * @param {Identifier|AnnotatedNode} inode  - A node of type Syntax.Identifier
+     * @param {string} newName                  - The new name of the identifier
+     */
     rename( inode, newName )
     {
         assert( inode.type === Syntax.Identifier || inode.type === Syntax.MemberExpression, "Not an Identifier in rename, found: " + inode.type );
@@ -288,6 +331,10 @@ export default class AST
             this.renameOffsets.push( { start: inode.range[ 0 ], end: inode.range[ 1 ], newName } );
     }
 
+    /**
+     * Return the AST nodes as source code, including any modifications made.
+     * @return {string}     - The lossy source code
+     */
     as_source()
     {
         if ( this.renameOffsets.length === 0 ) return this.source;
@@ -312,6 +359,7 @@ export default class AST
      * @param {FunctionDeclaration|FunctionExpression|MethodDefinition|ArrowFunctionExpression|Property|Node} node
      * @param {string} [whatToGet='all']
      * @return {Array<Node>|string|CFGInfo}
+     * @protected
      */
     get_from_function( node, whatToGet = 'all' )
     {
@@ -329,6 +377,11 @@ export default class AST
         }
 
         const
+            /**
+             * @param {AnnotatedNode} n
+             * @return {?string}
+             * @private
+             */
             hopeForName = n => {
                 if ( n.type === Syntax.Identifier )
                     return n.name;
@@ -376,6 +429,7 @@ export default class AST
         /**
          * @param {AnnotatedNode|BaseFunction|MethodDefinition|Program} node
          * @returns {?(AnnotatedNode|Array<AnnotatedNode>)}
+         * @private
          */
         function grab_body( node )
         {
@@ -394,6 +448,7 @@ export default class AST
 
         /**
          * @returns {*}
+         * @private
          */
         function grab_info()
         {

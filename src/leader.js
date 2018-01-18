@@ -15,11 +15,11 @@ import * as visitors from './visitors';
 const
     { isArray: array } = Array;
 
-
 /**
  * @param {CFGInfo} CFGInfo
  * @param {AST} ast
  * @param {CFGOptions} options
+ * @private
  */
 export default function create_new_cfg( cfgInfo, ast, options )
 {
@@ -28,7 +28,10 @@ export default function create_new_cfg( cfgInfo, ast, options )
     cfgInfo.ast      = ast;
     cfgInfo.topScope = ast.node_to_scope( ast.root );
 
-    /** @type {CFGInfo} */
+    /**
+     * @type {CFGInfo}
+     * @private
+     */
     let cfg = cfgInfo;
 
     cfg.bm = new BlockManager( ast, options );
@@ -108,6 +111,7 @@ export default function create_new_cfg( cfgInfo, ast, options )
  * @param {AnnotatedNode|Node|BaseNode|BlockStatement|Array<AnnotatedNode|Node|BaseNode|BlockStatement>} nodes
  * @param {VisitorHelper} visitorHelper
  * @return {CFGBlock}
+ * @private
  */
 function flat_walker( block, nodes, visitorHelper )
 {
@@ -115,6 +119,11 @@ function flat_walker( block, nodes, visitorHelper )
 
     if ( !nodes ) return visitorHelper.block = block;
 
+    /**
+     * @param {AnnotatedNode} node
+     * @return {boolean}
+     * @private
+     */
     function add_cfg( node )
     {
         if ( visitors[ node.type ] )

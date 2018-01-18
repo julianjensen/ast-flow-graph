@@ -1,5 +1,5 @@
 /** ******************************************************************************************************************
- * @file Describe what manager does.
+ * @file The class that manages the individual blocks.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
  * @date 02-Jan-2018
@@ -15,7 +15,8 @@ import { Block, Edge } from './types';
 import Edges           from './edges';
 
 /**
- * @type {Iterable<CFGBlock>}
+ * @param {AST} ast
+ * @param {CFGOptions} options
  */
 export default class BlockManager
 {
@@ -38,6 +39,7 @@ export default class BlockManager
 
     /**
      * @param {CFGBlock} block
+     * @private
      */
     toExitNode( block )
     {
@@ -46,6 +48,7 @@ export default class BlockManager
 
     /**
      * @param {Array<CFGBlock>} final
+     * @private
      */
     finish( final )
     {
@@ -72,6 +75,9 @@ export default class BlockManager
         this.blocks.forEach( ( b, i, bl ) => b && fn( b, i, bl ) );
     }
 
+    /**
+     * @param {function(CFGBlock,number,Array<CFGBlock>):*} fn
+     */
     map( fn )
     {
         return this.blocks.map( fn );
@@ -87,7 +93,10 @@ export default class BlockManager
     }
 
     /**
+     * Allocates a new block.
+     *
      * @returns {CFGBlock}
+     * @private
      */
     block()
     {
@@ -101,11 +110,17 @@ export default class BlockManager
         return block;
     }
 
+    /**
+     * @return {string}
+     */
     toString()
     {
         return this.blocks.map( b => `${b}` ).join( '\n' );
     }
 
+    /**
+     * @return {Array<string>[]}
+     */
     toTable()
     {
         return this.blocks.map( b => b.toRow() );
@@ -125,6 +140,7 @@ export default class BlockManager
 
     /**
      * @param {string} title
+     * @return {string}
      */
     create_dot( title )
     {
@@ -153,6 +169,11 @@ export default class BlockManager
         } );
     }
 
+    /**
+     * @param blocks
+     * @return {Array}
+     * @private
+     */
     pack( blocks )
     {
         const
@@ -178,6 +199,9 @@ export default class BlockManager
         return packed;
     }
 
+    /**
+     * @private
+     */
     clean()
     {
         let changed = true,
@@ -185,6 +209,7 @@ export default class BlockManager
 
         /**
          * @param {number} blockIndex
+         * @private
          */
         function pass( blockIndex )
         {
@@ -260,11 +285,19 @@ export default class BlockManager
         this.blocks = blocks;
     }
 
+    /**
+     * @param {number} id
+     * @private
+     */
     in_loop( id )
     {
         this.loops.push( id );
     }
 
+    /**
+     * @param {number} id
+     * @private
+     */
     out_loop( id )
     {
         let skipped = [];

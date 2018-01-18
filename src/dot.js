@@ -53,6 +53,7 @@ const
 /**
  * @param {DotOptions} opts
  * @return {string}
+ * @private
  */
 export default function dot( opts )
 {
@@ -70,6 +71,7 @@ export default function dot( opts )
         /**
          * @param {Edge} edge
          * @return {string}
+         * @private
          */
         formatEdge    = ( { from, to, type } ) => {
             const

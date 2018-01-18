@@ -7,4 +7,8 @@
 "use strict";
 
 require = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
-module.exports = require( './src/cfg' ).default;
+const { CFG } = require( './src/cfg' ).default;
+const { Block, Edge } = require( './src/types' );
+module.exports = { CFG, Block, Edge };
+// module.exports = require( './src/cfg' ).default;
+

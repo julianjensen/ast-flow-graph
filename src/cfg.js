@@ -1,5 +1,5 @@
 /** ******************************************************************************************************************
- * @file Describe what cfg does.
+ * @file The main CFG definition class. Generally, you start here.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
  * @date 26-Nov-2017
@@ -26,11 +26,15 @@ const
         }
     };
 
-/** */
+/**
+ * @param {string} source
+ * @param {object} [options]
+ */
 export default class CFG
 {
     /**
      * @param {string} source
+     * @param {object} [options]
      */
     constructor( source, options = defaultOptions )
     {
@@ -46,11 +50,17 @@ export default class CFG
         this.cfgs    = [];
     }
 
+    /**
+     * @return {string}
+     */
     toString()
     {
         return this.cfgs.map( b => `${b}` ).join( '\n\n' );
     }
 
+    /**
+     * @return {string}
+     */
     toTable()
     {
         return this.cfgs.map( b => b.toTable() ).join( '\n\n' );
@@ -97,13 +107,18 @@ export default class CFG
     }
 
     /**
-     * @param {function(BasicBlock, number)} fn
+     * @param {function(CFGInfo, number)} fn
      */
     forEach( fn )
     {
         this.cfgs.forEach( fn );
     }
 
+    /**
+     * @param {CFGInfo} cfg
+     * @param {string} [title]
+     * @return {string}
+     */
     create_dot( cfg, title = cfg.name + ':' + cfg.lines.join( '-' ) )
     {
         return cfg.bm.create_dot( title );

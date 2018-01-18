@@ -81,3 +81,31 @@
  * @property {object} [dotOptions={}]
  * @property {CFGBlock[]} blocks
  */
+
+/**
+ * @typedef {object} FunctionInfo
+ * @property {string} name
+ * @property {Array<AnnotatedNode>|AnnotatedNode} body
+ * @property {Array<AnnotatedNode>} [params]
+ * @property {AnnotatedNode} node
+ * @property {[ number, number ]} lines
+ */
+
+/**
+ * @typedef {object} EdgeInfo
+ * @property {function(number):EdgeInfo} as
+ * @property {function(number):EdgeInfo} not
+ * @property {function(number):boolean} isa
+ * @property {number} index
+ * @private
+ */
+
+/**
+ * @typedef {object} CaseInfo
+ * @property {?CFGBlock} [test]
+ * @property {?CFGBlock} [body]
+ * @property {?AnnotatedNode} switchTest
+ * @property {AnnotatedNode} consequent
+ * @private
+ */
+

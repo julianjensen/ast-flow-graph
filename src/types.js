@@ -9,6 +9,7 @@
 /**
  * @param {object<string,number>} names
  * @return {Block|Edge|SymbolFlags|ModifierFlags}
+ * @private
  */
 function make_enum_from_object( names ) // , start = 0, bitWise = false )
 {
@@ -21,7 +22,8 @@ function make_enum_from_object( names ) // , start = 0, bitWise = false )
 
 
 /**
- * @enum
+ * @enum {number}
+ * @name Block
  */
 export let Block                = {
         NONE:      0,
@@ -38,10 +40,14 @@ export let Block                = {
         CLEAR:     3,
         EXCLUSIVE: 15
     };
-    /** @type {Block} */
+    /**
+     * @type {Block}
+     * @private
+     */
     Block               = make_enum_from_object( Block );
     /**
-     * @enum
+     * @enum {number}
+     * @name Edge
      */
 export let    Edge                 = {
         NONE:      0,
@@ -62,9 +68,12 @@ export let    Edge                 = {
     };
     /**
      * @type {Edge}
+     * @private
      */
     Edge                = make_enum_from_object( Edge );
-    /** */
+    /**
+     * The default display options for table and string output.
+     */
 export let    defaultOutputOptions = {
         MAX_EDGES_TO_PRINT: 7,
         SPACE_PER_EDGE:     4,
@@ -79,11 +88,24 @@ export let    defaultOutputOptions = {
 
 export const outputOptions = defaultOutputOptions;
 
+/**
+ * Override display options.
+ *
+ * @param options
+ */
 export function output( options = {} )
 {
     Object.assign( outputOptions, defaultOutputOptions, options );
 }
 
+/**
+ * Turns an `enum` into an array of strings.
+ *
+ * @param {enum} enumType
+ * @param {number} val
+ * @return {Array<string>}
+ * @private
+ */
 export function enum_to_string( enumType, val )
 {
     let vals = [];

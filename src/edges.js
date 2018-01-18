@@ -18,6 +18,7 @@ const
  * @param {number} index
  * @param {number} _type
  * @return {EdgeInfo}
+ * @private
  */
 function blockEdge( index, _type = Edge.NONE )
 {
@@ -41,8 +42,17 @@ function blockEdge( index, _type = Edge.NONE )
     return self;
 }
 
+/**
+ * Keeps track of edges apart from the successors listed in the {@link CFGBlock} so we can
+ * attach types and classifications on edges separate from their blocks.
+ *
+ * @param {BlockManager} bm
+ */
 export default class Edges
 {
+    /**
+     * @param {BlockManager} bm
+     */
     constructor( bm )
     {
         this.blockManager = bm;
@@ -52,6 +62,12 @@ export default class Edges
         this._preds       = null;
     }
 
+    /**
+     * @param {number} from
+     * @param {number} to
+     * @param {number} i
+     * @private
+     */
     _reindex_one( from, to, i )
     {
         const be = this.edgeInfo.get( code( from, to ) );
@@ -59,6 +75,10 @@ export default class Edges
         if ( be ) be.index = i;
     }
 
+    /**
+     * @param {CFGBlock|number} from
+     * @return {Edges}
+     */
     reindex( from )
     {
         if ( from !== void 0 )
@@ -75,6 +95,14 @@ export default class Edges
         return this;
     }
 
+    /**
+     * Add an edge between to CFGBlocks.
+     *
+     * @param {CFGBlock|number} from
+     * @param {CFGBlock|number} to
+     * @param {Edge} type
+     * @return {Edges}
+     */
     add( from, to, type = Edge.NONE )
     {
         from = index( from );
@@ -92,6 +120,14 @@ export default class Edges
         return this;
     }
 
+    /**
+     * Set a type on an arbitrary edge.
+     *
+     * @param {CFGBlock|number} from
+     * @param {CFGBlock|number} to
+     * @param {Edge} ctype
+     * @return {Edges}
+     */
     classify( from, to, ctype )
     {
         from = index( from );
@@ -103,6 +139,14 @@ export default class Edges
         return this;
     }
 
+    /**
+     * Remove a type from an arbitrary edge.
+     *
+     * @param {CFGBlock|number} from
+     * @param {CFGBlock|number} to
+     * @param {Edge} type
+     * @return {Edges}
+     */
     not( from, to, type )
     {
         from = index( from );
@@ -113,6 +157,11 @@ export default class Edges
         return this;
     }
 
+    /**
+     * @param {number} from
+     * @param {number} to
+     * @private
+     */
     __add( from, to )
     {
         if ( !this.succs[ from ] )
@@ -123,6 +172,13 @@ export default class Edges
         if ( !this.succs[ to ] ) this.succs[ to ] = [];
     }
 
+    /**
+     * @param {CFGBlock|number} from
+     * @param {CFGBlock|number} to
+     * @param {(CFGBlock|number)[]} newTargets
+     * @return {Edges}
+     * @private
+     */
     _retarget( from, to, ...newTargets )
     {
         from = index( from );
@@ -153,6 +209,12 @@ export default class Edges
         return this;
     }
 
+    /**
+     * Point one or more edges to a new {@link CFGBlock}, used in block removal.
+     *
+     * @param {CFGBlock|number} node
+     * @return {Edges}
+     */
     retarget_multiple( node )
     {
         node = index( node );
@@ -168,6 +230,13 @@ export default class Edges
         return this;
     }
 
+    /**
+     * Remove a successor {@link CFGBlock} from a {@link CFGBlock}
+     *
+     * @param {CFGBlock|number} from
+     * @param {CFGBlock|number} to
+     * @return {Edges}
+     */
     remove_succ( from, to )
     {
         from = index( from );
@@ -188,6 +257,12 @@ export default class Edges
         return this;
     }
 
+    /**
+     * Get all successors for a given {@link CFGBlock}.
+     *
+     * @param {CFGBlock|number} from
+     * @return {CFGBlock[]}
+     */
     get_succs( from )
     {
         from = index( from );
@@ -197,6 +272,12 @@ export default class Edges
         return succs.map( id => this.blockManager.get( id ) );
     }
 
+    /**
+     * Get all predecessors for a given {@link CFGBlock}
+     *
+     * @param {CFGBlock|number} from
+     * @return {CFGBlock[]}
+     */
     get_preds( from )
     {
         from = index( from );
@@ -206,6 +287,11 @@ export default class Edges
         return preds.map( id => this.blockManager.get( id ) );
     }
 
+    /**
+     * Renumber all indices (`id` field) because of removed {@link CFGBlock}s.
+     *
+     * @param {Array<number>} newOffsets
+     */
     renumber( newOffsets )
     {
         if ( newOffsets[ newOffsets.length - 1 ] === 0 ) return;
@@ -231,6 +317,16 @@ export default class Edges
         this.succs = _succs;
     }
 
+    /**
+     * Keep edge information up-to-date.
+     *
+     * @param {CFGBlock|number} from
+     * @param {CFGBlock|number} to
+     * @param {CFGBlock|number} from1
+     * @param {CFGBlock|number} to1
+     * @return {Edges=}
+     * @private
+     */
     _relabel( from, to, from1, to1 )
     {
         const
@@ -245,11 +341,21 @@ export default class Edges
         return this;
     }
 
+    /**
+     * @type {Iterable<number>}
+     */
     *successors()
     {
         yield *this.succs;
     }
 
+    /**
+     * Is there an edge of the gievn type?
+     *
+     * @param {CFGBlock|number} from
+     * @param {Edge} type
+     * @return {boolean}
+     */
     has( from, type )
     {
         from = index( from );
@@ -260,6 +366,12 @@ export default class Edges
         } );
     }
 
+    /**
+     * Get edge information for a given {@link CFGBlock}, i.e. successors.
+     *
+     * @param {CFGBlock|number} from
+     * @return {*|{}|Uint8Array|{from: *, to: *, type: V | undefined}[]|Int32Array|Uint16Array}
+     */
     edges( from )
     {
         from = index( from );
@@ -267,6 +379,11 @@ export default class Edges
         return this.succs[ from ].map( to => ( { from, to, type: this.edgeInfo.get( code( from, to ) ) } ) );
     }
 
+    /**
+     * Get all predecessors for a given {@link CFGBlock}
+     *
+     * @return {Array<number>}
+     */
     get preds()
     {
         // if ( !this._preds )
@@ -275,6 +392,12 @@ export default class Edges
         return this._preds;
     }
 
+    /**
+     * Get all predecessor edge information for a given {@link CFGBlock}.
+     *
+     * @param {CFGBlock|number} _from
+     * @return {*|{}|Uint8Array|{from: *, to: *, type: V | undefined}[]|Int32Array|Uint16Array}
+     */
     pred_edges( _from )
     {
         const

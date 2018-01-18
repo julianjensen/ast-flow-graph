@@ -1,8 +1,154 @@
 /** ****************************************************************************************************
- * File: visitors (cfg)
+ * @description
  *
- * \[\s*Syntax\.([a-zA-Z]+)\s*]\s*:\s*(.*?)(?==>)=>\s*((?:.|\n)*?)\s*(?=\/\*\*\n|\[\s*Syntax\.[a-zA-Z]+\s*\][^(])
- * (( +)\/\*\*\n(?:.|\n)+?\2 \*\/\n\s*)?\[\s*Syntax\.([a-zA-Z]+)\s*]\s*:\s*(.*?)(?==>)=>\s*((?:.|\n)*?)\s*(?=\s{8}},)
+ * ### The `for` Statement
+ *
+ * The `ForStatement` works like shown in the following. Note that the init, test, and update
+ * may be absent, leaving only a body, in which case it is an infirnite loop, barring a `break`
+ * or `continue`.
+ *
+ *      PREV ->
+ *                      ┌───────────────┐
+ *                      v               │
+ *           INIT -> TEST -> BODY -> UPDATE  <───── `ContinueStatement` target
+ *                     │
+ *                     └────> REST OF CODE PAST LOOP   <───── `BreakStatement` target
+ *
+ *      [INIT]    ->    [TEST]
+ *
+ *      BODY    -> [UPDATE]
+ *
+ *      REST
+ *
+ * ### The `if` Statement
+ *
+ *            │
+ *            │
+ *            V
+ *      ┌────────────┐     ┌─────────────┐
+ *      │    test    │ ──> │ (alternate) │
+ *      └────────────┘     └─────────────┘
+ *            │                   │
+ *            │                   │
+ *            V                   │
+ *      ┌────────────┐            │
+ *      │ consequent │            │
+ *      └────────────┘            │
+ *            │                   │
+ *            │                   │
+ *            V                   │
+ *      ┌────────────┐            │
+ *      │   block    │<───────────┘
+ *      └────────────┘
+ *
+ * ### The `switch` Statement
+ *
+ * Originally, I treated the Switc/SwitchCase structure like shown in the
+ * first diagram but ended up changing it to something more leaborate but
+ * closer to how it would actually be treated by a compiler (sub-dividing
+ * test cases and so on).
+ *
+ *              ┌──────────────┐
+ *              │              │
+ *              │    switch    │
+ *              │              │
+ *              └──┬─┬─┬─┬─┬─┬─┘
+ *                 │ │ │ │ │ │
+ *                 │ │ │ │ │ │         ┌─────────────┐
+ *                 │ │ │ │ │ │         │             │
+ *                 │ │ │ │ │ └────────>│    case1    │
+ *                 │ │ │ │ │           │             │
+ *                 │ │ │ │ │           └─────────────┘
+ *                 │ │ │ │ │
+ *                 │ │ │ │ │           ┌─────────────┐
+ *                 │ │ │ │ │           │             │
+ *                 │ │ │ │ └──────────>│    case2    │
+ *                 │ │ │ │             │             │
+ *                 │ │ │ │             └─────────────┘
+ *                 │ │ │ │
+ *                 │ │ │ │             ┌─────────────┐
+ *                 │ │ │ │             │             │ [ fall through succ. is next case ]
+ *                 │ │ │ └────────────>│    case3    │
+ *                 │ │ │               │             │
+ *                 │ │ │               └──────┬──────┘
+ *                 │ │ │                      │
+ *                 │ │ │                Falls through
+ *                 │ │ │                      │
+ *                 │ │ │               ┌──────┴──────┐
+ *                 │ │ │               │             │ [ previous falls through, preds are switch and previous case ]
+ *                 │ │ └──────────────>│    case4    │
+ *                 │ │                 │             │
+ *                 │ │                 └─────────────┘
+ *                 │ │
+ *                 │ │                 ┌─────────────┐
+ *                 │ │                 │             │
+ *                 │ └────────────────>│   default   │
+ *                 │                   │             │
+ *        Pred if no default           └──────┬──────┘
+ *                 │                          │
+ *                 v                    Pred if default
+ *                 ┌─────────────┐            │
+ *                 │             │            │
+ *                 │    next     │<───────────┘
+ *                 │             │
+ *                 └─────────────┘
+ *
+ * Now, I deal with it as shown below. We go from test to test, based on the discriminant
+ * in the `SwitchStatement` itself. A `false` result moves on to the next test while a
+ * true result transfers control to the body of the `SwitchCase`. Some caveats are:
+ *
+ * 1. Without a `BreakStatement` at the end that post-dmoniates the block, it will fall
+ *    through to the next `SwitchCase` body.
+ * 2. There is no requirement that a `SwitchCase` will have a body block, in which case, we
+ *    keep falling to the next one, until we reach a body or exit the `SwitchStatement` entirely.
+ * 3. We go from false test to false test, however, there may be one `SwitchCase1 that doesn't
+ *    have a test, the default case. The default case need not be at the end and follow the
+ *    same rules as described above regarding falling through. The false edge from the final
+ *    test will go to the default body, if there is one, or the normal block following the
+ *    `SwitchStatement`, if there is one (otherwise it will eventually work its way up to the
+ *    exit node).
+ *
+ *      TEST -> true -> body -> break -> out
+ *                           -> no break -> next body
+ *
+ *           -> false -> next test
+ *
+ * if last
+ *
+ *      TEST -> true -> body -> break -> out
+ *                           -> no break -> out
+ *
+ *           -> false -> default OR out
+ *
+ *
+ *
+ *                  consequent
+ *      SWITCH           │
+ *         │             v
+ *         └──> TEST ───────────> BODY ─────────┐ break
+ *                │                │            │
+ *             alt│              no│break       │
+ *                │              no│body        │
+ *                │                │            │
+ *                V                V            │
+ *              TEST ───────────> BODY ─────────┤ break
+ *                │                │            │
+ *             alt│              no│break       │
+ *                │              no│body        │
+ *                │                │            │
+ *                │                V            │
+ *                │  DEFAULT ───> BODY ─────────┤ break (or not)
+ *                │     ^          │            │
+ *                │     │        no│break       │
+ *                │   if│false   no│body        │
+ *                │  and│default   │            │
+ *                V     │          V            │
+ *              TEST ───────────> BODY ─────────┤ break (or not)
+ *                    if│false                  │
+ *                and no│default                │
+ *                      v                       │
+ *      CONT <──────────────────────────────────┘
+ *
  *
  * @author julian on 12/22/17
  * @version 1.0.0
@@ -17,6 +163,7 @@ import list from 'yallist';
  * @param {BlockStatement} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function BlockStatement( node, visitorHelper )
 {
@@ -27,6 +174,7 @@ export function BlockStatement( node, visitorHelper )
  * @param {LabeledStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function LabeledStatement( node, visitorHelper )
 {
@@ -38,6 +186,14 @@ export function LabeledStatement( node, visitorHelper )
     return visitorHelper.flatWalk( statement, node.body, visitorHelper );
 }
 
+/**
+ * @param {AnnotatedNode} node
+ * @param {VisitorHelper} vh
+ * @param {Block} type
+ * @param {function} targets
+ * @return {null}
+ * @private
+ */
 function to_label( node, vh, type, targets )
 {
     if ( node.label )
@@ -71,6 +227,7 @@ function to_label( node, vh, type, targets )
  * @param {BreakStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock[]}
+ * @private
  */
 export function BreakStatement( node, visitorHelper )
 {
@@ -81,6 +238,7 @@ export function BreakStatement( node, visitorHelper )
  * @param {CatchClause|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function CatchClause( node, visitorHelper )
 {
@@ -91,6 +249,7 @@ export function CatchClause( node, visitorHelper )
  * @param {ContinueStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function ContinueStatement( node, visitorHelper )
 {
@@ -101,6 +260,7 @@ export function ContinueStatement( node, visitorHelper )
  * @param {DoWhileStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function DoWhileStatement( node, visitorHelper )
 {
@@ -145,6 +305,7 @@ export function DoWhileStatement( node, visitorHelper )
  * @param {ForStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function ForStatement( node, visitorHelper )
 {
@@ -214,6 +375,7 @@ export function ForStatement( node, visitorHelper )
  * @param {ForInStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function ForInStatement( node, visitorHelper )
 {
@@ -236,6 +398,7 @@ export function ForInStatement( node, visitorHelper )
  * @param {ForInStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function ForOfStatement( node, visitorHelper )
 {
@@ -266,6 +429,7 @@ export function ForOfStatement( node, visitorHelper )
  * @param {IfStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock[]}
+ * @private
  */
 export function IfStatement( node, visitorHelper )
 {
@@ -296,6 +460,7 @@ export function IfStatement( node, visitorHelper )
  * @param {ReturnStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function ReturnStatement( node, visitorHelper )
 {
@@ -304,14 +469,6 @@ export function ReturnStatement( node, visitorHelper )
 
     return null;
 }
-
-/**
- * @typedef {object} CaseInfo
- * @property {?CFGBlock} [test]
- * @property {?CFGBlock} [body]
- * @property {?AnnotatedNode} switchTest
- * @property {AnnotatedNode} consequent
- */
 
 /**
  * Originally, I treated the Switc/SwitchCase structure like shown in the
@@ -422,6 +579,7 @@ export function ReturnStatement( node, visitorHelper )
  *
  * @param {SwitchStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
+ * @private
  */
 export function SwitchStatement( node, visitorHelper )
 {
@@ -430,15 +588,24 @@ export function SwitchStatement( node, visitorHelper )
     let _switch  = newBlock().from( block ).add( node.discriminant ),
         cont     = newBlock().as( Block.CONVERGE ),
 
-        /** @type {CaseInfo} */
+        /**
+         * @type {CaseInfo}
+         * @private
+         */
         _default,
 
-        /** @type {List<CaseInfo>} */
+        /**
+         * @type {List<CaseInfo>}
+         * @private
+         */
         caseList = list.create( node.cases.map( n => {
 
             let test     = n.test && newBlock().as( Block.TEST ).add( n.test ),
                 body     = n.consequent && n.consequent.length && newBlock(),
-                /** @type {CaseInfo} */
+                /**
+                 * @type {CaseInfo}
+                 * @private
+                 */
                 caseInfo = {
                     body,
                     test,
@@ -518,6 +685,7 @@ export function SwitchStatement( node, visitorHelper )
 /**
  * @param {SwitchCase|AnnotatedNode} node
  * @return {?CFGBlock}
+ * @private
  */
 export function SwitchCase( node )
 {
@@ -528,6 +696,7 @@ export function SwitchCase( node )
  * @param {ThrowStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function ThrowStatement( node, visitorHelper )
 {
@@ -549,6 +718,7 @@ export function ThrowStatement( node, visitorHelper )
  * @param {TryStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock|CFGBlock[]}
+ * @private
  */
 export function TryStatement( node, visitorHelper )
 {
@@ -574,6 +744,7 @@ export function TryStatement( node, visitorHelper )
  * @param {WhileStatement|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function WhileStatement( node, visitorHelper )
 {
@@ -599,6 +770,7 @@ export function WhileStatement( node, visitorHelper )
  * @param {ConditionalExpression|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock[]}
+ * @private
  */
 export function ConditionalExpression( node, visitorHelper )
 {
@@ -635,6 +807,7 @@ export function ConditionalExpression( node, visitorHelper )
  * @param {BaseNode|AnnotatedNode} node
  * @param {VisitorHelper} visitorHelper
  * @return {?CFGBlock}
+ * @private
  */
 export function syntax_default( node, visitorHelper )
 {

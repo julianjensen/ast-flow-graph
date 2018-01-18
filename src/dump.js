@@ -1,5 +1,5 @@
 /** ******************************************************************************************************************
- * @file Describe what dump does.
+ * @file Functions to dump out information as pretty CLI tables.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
  * @date 03-Dec-2017

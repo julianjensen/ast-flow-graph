@@ -9,7 +9,6 @@
         "check": "npm run lint -s && dependency-check package.json --entry index.js",
         "test": "rm -rf node_modules/.cache coverage/ && nyc --reporter=lcov --reporter=text --produce-source-map --require=@std/esm mocha",
         "coveralls": "npm test && nyc report --reporter=text-lcov | coveralls",
-        "report": "nyc report --reporter=text-lcov",
         "postcoveralls": "rimraf ./coverage",
         "prepublish": "npm test",
         "patch": "npm version patch && npm publish",
@@ -19,6 +18,8 @@
         "changelog": "npx auto-changelog -p -l 10 && git add CHANGELOG.md",
         "marktoc": "npx replace -s -q '### Changelog' '<!-- START doctoc -->\\\n<!-- END doctoc -->' CHANGELOG.md",
         "toc": "npx doctoc --github --title \"### Changelog\" CHANGELOG.md",
+        "docs": "documentation readme index.js --infer-private='^_.*'  -s API --github",
+        "docsite": "documentation build index.js --infer-private='^_.*'  -f html -o docs",
         "version": "run-s -s changelog marktoc toc"
     },
     "repository": {
@@ -44,7 +45,6 @@
         "coveralls": "^3.0.0",
         "dependency-check": "^3.0.0",
         "eslint": "^4.4.0",
-        "istanbul": "^0.4.5",
         "mocha": "^4.1.0",
         "npm-run-all": "^4.1.2",
         "nyc": "^11.4.1"
@@ -53,9 +53,10 @@
         "@std/esm": "^0.19.6",
         "chalk": "^2.3.0",
         "cli-table2": "^0.2.0",
-        "dominators": "^1.1.1",
         "command-line-args": "^5.0.0",
-        "command-line-usage": "^4.0.2",
+        "command-line-usage": "^4.1.0",
+        "documentation": "^5.3.5",
+        "dominators": "^1.1.1",
         "escope": "^3.6.0",
         "espree": "^3.5.2",
         "estraverse": "^4.2.0",

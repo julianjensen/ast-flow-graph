@@ -1,5 +1,5 @@
 /** ******************************************************************************************************************
- * @file CFG block helper functions
+ * @file CFG block definition, equivalent to a basic block in compiler parlance.
  * @author Julian Jensen <jjdanois@gmail.com>
  * @since 1.0.0
  * @date 18-Dec-2017
@@ -23,17 +23,12 @@ const
         EXIT_NODE
     }       = display_options( true ),
     padLeft = ( n, target, pre, post ) => [ ' '.repeat( target - `${n}`.length ), pre, `${n}`, post ],
-    digits  = ( n, d = 2, pre = '', post = '' ) => padLeft( n, d - 1, pre, post ).join( '' ); // pre + `${n}`.padStart( d - ( pre || post ? 1 : 0 ) ) + post;
+    digits  = ( n, d = 2, pre = '', post = '' ) => padLeft( n, d - 1, pre, post ).join( '' );
 
-    /**
-     * @typedef {object} EdgeInfo
-     * @property {function(number):EdgeInfo} as
-     * @property {function(number):EdgeInfo} not
-     * @property {function(number):boolean} isa
-     * @property {number} index
-     */
-
-    /** */
+/**
+ * @param {number} id
+ * @param {Edges} edges
+ */
 export default class CFGBlock
 {
     /**
@@ -55,6 +50,22 @@ export default class CFGBlock
 
         this.createdBy = '';
         this.scope     = null;
+    }
+
+    /**
+     * @return {number[]}
+     */
+    get succesors_as_indices()
+    {
+        return this.succs.map( s => s.id );
+    }
+
+    /**
+     * @return {Array<CFGBlock>}
+     */
+    get successors()
+    {
+        return this.succs;
     }
 
     /**
@@ -173,8 +184,10 @@ export default class CFGBlock
     }
 
     /**
+     * Sets the last edge to type.
+     *
      * @param {Edge} edgeType
-     * @param {number|CFGBlock} to
+     * @param {number|CFGBlock} [to]
      * @return {CFGBlock}
      */
     edge_as( edgeType, to )
@@ -186,6 +199,8 @@ export default class CFGBlock
     }
 
     /**
+     * Removes a type from this block.
+     *
      * @param {Edge} nodeType
      * @return {CFGBlock}
      */
@@ -196,6 +211,8 @@ export default class CFGBlock
     }
 
     /**
+     * For test nodes, this adds the edge taken when the condition is true.
+     *
      * @param {CFGBlock} block
      * @return {CFGBlock}
      */
@@ -204,11 +221,13 @@ export default class CFGBlock
         if ( !block ) return this;
 
         this.to( block ).as( Block.TEST );
-        this.edge_as( Edge.TRUE, block.id );
+        this.edge_as( Edge.TRUE, block );
         return this;
     }
 
     /**
+     * For test nodes, this adds the edge taken when the condition is false.
+     *
      * @param {CFGBlock} block
      * @return {CFGBlock}
      */
@@ -217,11 +236,13 @@ export default class CFGBlock
         if ( !block ) return this;
 
         this.to( block ).as( Block.TEST );
-        this.edge_as( Edge.FALSE );
+        this.edge_as( Edge.FALSE, block );
         return this;
     }
 
     /**
+     * Add a current-level AST node to this block.
+     *
      * @param {AnnotatedNode|BaseNode|Node} node
      * @return {CFGBlock}
      */
@@ -234,6 +255,8 @@ export default class CFGBlock
     }
 
     /**
+     * Returns the first AST node (if any) of this block.
+     *
      * @return {?(AnnotatedNode|BaseNode|Node)}
      */
     first()
@@ -242,6 +265,8 @@ export default class CFGBlock
     }
 
     /**
+     * Returns the last AST node (if any) of this block.
+     *
      * @return {?(AnnotatedNode|BaseNode|Node)}
      */
     last()
@@ -250,6 +275,8 @@ export default class CFGBlock
     }
 
     /**
+     * Free-text field indicating the manner of of creation of this node. For information in graphs and printouts only.
+     *
      * @param {string} txt
      * @return {CFGBlock}
      */
@@ -260,6 +287,8 @@ export default class CFGBlock
     }
 
     /**
+     * Check if this block has a particular type.
+     *
      * @param {number} typeName
      * @returns {boolean}
      */
@@ -269,9 +298,9 @@ export default class CFGBlock
     }
 
     /**
-     * Remove itself if it's an empty node
+     * Remove itself if it's an empty node and isn't the start or exit node.
      *
-     * @return {boolean}  - true if can be deleted
+     * @return {boolean}  - true if it was deleted
      */
     eliminate()
     {
@@ -293,7 +322,7 @@ export default class CFGBlock
 
     /*****************************************************************************************************************
      *
-     * PRINT
+     * PRINT AND OUTPUT HELPERS
      *
      *****************************************************************************************************************/
 
@@ -315,6 +344,8 @@ export default class CFGBlock
     }
 
     /**
+     * Stringified line numbers for this block.
+     *
      * @return {string}
      */
     lines()
