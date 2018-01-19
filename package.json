@@ -1,6 +1,6 @@
 {
     "name": "ast-flow-graph",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "description": "Constructs a CFG for JavaScript source code.",
     "main": "index.js",
     "bin": "_cli.js",
@@ -20,7 +20,7 @@
         "toc": "npx doctoc --github --title \"### Changelog\" CHANGELOG.md",
         "docs": "npx documentation readme index.js --infer-private='^_.*'  -s API --github",
         "docsite": "npx documentation build index.js --infer-private='^_.*'  -f html -o docs",
-        "version": "run-s -s changelog marktoc toc"
+        "version": "run-s -s changelog marktoc toc docs"
     },
     "repository": {
         "types": "git",
