@@ -9,7 +9,7 @@
 
 import AST            from './ast';
 import create_new_cfg from './leader';
-import { plugin }     from './utils';
+import { plugin, current }     from './utils';
 
 const
     defaultOptions = {
@@ -49,6 +49,7 @@ export default class CFG
         this.options.parser              = p;
         this.options.parser.ecmaFeatures = ecma;
 
+        current.cfg = this;
         plugin( 'cfg', 'init', this );
         this.ast  = new AST( source, this.options.parser );
         this.cfgs = [];
@@ -79,6 +80,8 @@ export default class CFG
      */
     generate( name )
     {
+        current.cfg = this;
+
         if ( !name )
         {
             for ( const func of this.ast.forFunctions() )

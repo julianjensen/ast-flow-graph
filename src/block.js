@@ -8,7 +8,7 @@
 
 import assert                             from 'assert';
 import { Block, Edge, enum_to_string }    from './types';
-import { display_options, array, plugin } from './utils';
+import { display_options, array, plugin, current } from './utils';
 
 const
     {
@@ -51,6 +51,7 @@ export default class CFGBlock
         this.createdBy = '';
         this.scope     = null;
 
+        current.block = this;
         plugin( 'cfgblock', 'init', this );
     }
 

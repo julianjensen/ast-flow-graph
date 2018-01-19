@@ -7,11 +7,11 @@
 
 "use strict";
 
-import { str_table } from './dump';
-import { Block, Edge } from './types';
-import BlockManager from './manager';
-import * as visitors from './visitors';
-import { plugin } from './utils';
+import { str_table }       from './dump';
+import { Block, Edge }     from './types';
+import BlockManager        from './manager';
+import * as visitors       from './visitors';
+import { plugin, current } from './utils';
 
 const
     { isArray: array } = Array;
@@ -22,8 +22,7 @@ const
  * @param {CFGOptions} options
  * @private
  */
-export default function create_new_cfg( cfgInfo, ast, options )
-{
+export default function create_new_cfg( cfgInfo, ast, options ) {
 
     ast.root         = cfgInfo.node;
     cfgInfo.ast      = ast;
@@ -131,9 +130,10 @@ function flat_walker( block, nodes, visitorHelper )
 
         if ( visitors[ node.type ] )
         {
-            cbBlock = visitorHelper.block;
+            cbBlock     = visitorHelper.block;
             let outputs = visitors[ node.type ]( node, visitorHelper );
 
+            current.block = cbBlock;
             plugin( 'cfgblock', 'finish', cbBlock );
 
             if ( !outputs )
@@ -172,6 +172,7 @@ function flat_walker( block, nodes, visitorHelper )
         else if ( visitorHelper.block )
             visitorHelper.block.add( node );
 
+        current.block = cbBlock;
         plugin( 'cfgblock', 'postFinish', cbBlock );
     }
 

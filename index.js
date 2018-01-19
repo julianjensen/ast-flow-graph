@@ -9,8 +9,6 @@
 require                        = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
 const CFG                      = require( './src/cfg' ).default;
 const { Block, Edge }          = require( './src/types' );
-const BlockManager             = require( './src/manager' ).default;
-const AST                      = require( './src/ast' ).default;
 const { load_plugins, plugin } = require( './src/utils' );
 
 let loaded = false;

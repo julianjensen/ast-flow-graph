@@ -9,6 +9,9 @@
 import chalk from 'chalk';
 import PluginManager from './plugins';
 
+/**
+ * @type {PluginManager}
+ */
 let pluginManager;
 
 export const
@@ -66,6 +69,16 @@ export const
     display_options    = function( fancy ) {
         return Object.assign( { SPACE_PER_EDGE: 4, MAX_EDGES: 7 }, fancy ? nice : dull );
     },
+    current = {
+        cfg: null,
+        blockManager: null,
+        ast: null,
+        block: null
+    },
+    /**
+     * @param {Array<string>} list
+     * @private
+     */
     load_plugins = function( list ) {
         if ( list )
         {
@@ -73,6 +86,13 @@ export const
             pluginManager.load_plugins();
         }
     },
+    /**
+     * @param {string} topKey
+     * @param {?string} subKey
+     * @param {...*} args
+     * @return {*}
+     * @private
+     */
     plugin = function( topKey, subKey, ...args ) {
-        if ( pluginManager ) pluginManager.callback( topKey, subKey, ...args );
+        if ( pluginManager ) return pluginManager.callback( topKey, subKey, ...args );
     };

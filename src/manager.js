@@ -6,13 +6,13 @@
  *********************************************************************************************************************/
 "use strict";
 
-import assert                  from 'assert';
-import { error, warn, plugin } from './utils';
-import { postOrder }           from 'traversals';
-import dot                     from './dot';
-import CFGBlock                from './block';
-import { Block, Edge }         from './types';
-import Edges                   from './edges';
+import assert                           from 'assert';
+import { error, warn, plugin, current } from './utils';
+import { postOrder }                    from 'traversals';
+import dot                              from './dot';
+import CFGBlock                         from './block';
+import { Block, Edge }                  from './types';
+import Edges                            from './edges';
 
 /**
  * @param {AST} ast
@@ -26,15 +26,17 @@ export default class BlockManager
      */
     constructor( ast, options )
     {
+
         BlockManager.blockId = 0;
         this.edges           = new Edges( this );
         /** @type {CFGBlock[]} */
         this.blocks = [];
-        this.loops     = [];
-        this.startNode = this.block().as( Block.START );
-        this.toExit    = [];
-        this.ast       = ast;
-        this.options   = options;
+        this.loops           = [];
+        this.startNode       = this.block().as( Block.START );
+        this.toExit          = [];
+        this.ast             = ast;
+        this.options         = options;
+        current.blockManager = this;
         plugin( 'blockmanager', 'init', this );
     }
 
@@ -63,11 +65,13 @@ export default class BlockManager
                 b.classify( this.exitNode, b.deferredEdgeType );
         } );
 
+        current.blockManager = this;
         plugin( 'blockmanager', 'finish', this );
         this.clean();
 
         BlockManager.blockId = this.size = this.blocks.length;
 
+        current.blockManager = this;
         plugin( 'blockmanager', 'postfinish', this );
     }
 

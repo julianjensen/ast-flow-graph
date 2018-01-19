@@ -9,8 +9,8 @@
 import assert from 'assert';
 import { traverse, Syntax } from 'estraverse';
 import { analyze } from 'escope';
-import { parse, VisitorKeys } from 'espree';
-import { plugin } from './utils';
+import { VisitorKeys } from 'espree';
+import { plugin, current } from './utils';
 
 const
     { isArray: array } = Array,
@@ -66,10 +66,11 @@ export default class AST
         this.source        = source;
         this.renameOffsets = [];
 
+        current.ast = this;
         plugin( 'ast', 'init', this );
 
         // this.root          = this.ast = espree.parse( source, options );
-        this.root          = this.ast = parse( source, options );
+        this.root          = this.ast = plugin( 'parse', null, source, options );
 
         this.escope = analyze( this.ast, {
             ecmaVersion: 6,
@@ -83,6 +84,7 @@ export default class AST
         let index   = 0,
             labeled = [];
 
+        current.ast = this;
         plugin( 'ast', 'postinit', this );
 
         // this.traverse( ( node, parent ) => {
@@ -111,6 +113,7 @@ export default class AST
             }
         } );
 
+        current.ast = this;
         plugin( 'ast', 'finish', this );
 
         // this.escope = escope.analyze( this.ast, {
@@ -133,6 +136,7 @@ export default class AST
             } );
         } );
 
+        current.ast = this;
         plugin( 'ast', 'postfinish', this );
     }
 

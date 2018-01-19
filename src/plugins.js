@@ -6,35 +6,34 @@
  *********************************************************************************************************************/
 "use strict";
 
-import { promisify } from 'util';
-import fs            from 'fs';
+import { parse } from 'espree';
 
 const
-    func = fn => typeof fn === 'function',
-    obj = o => typeof o === 'object' && !Array.isArray( o ) && o !== null,
-    stat = promisify( fs.stat ),
-    isTop = topKey => [ 'cfg', 'ast', 'cfgblock', 'manager', 'output', 'general' ].includes( topKey.toLowerCase() ),
-    forKeys = ( o, cb ) => obj( o ) && Object.keys( o ).forEach( k => cb( o[ k ], k ) );
+    func               = fn => typeof fn === 'function',
+    obj                = o => typeof o === 'object' && !Array.isArray( o ) && o !== null,
+    { isArray: array } = Array,
+    isTop              = topKey => [ 'parse', 'cfg', 'ast', 'cfgblock', 'manager', 'general' ].includes( topKey.toLowerCase() ),
+    forKeys            = ( o, cb ) => obj( o ) && Object.keys( o ).forEach( k => cb( o[ k ], k ) );
 
 export default class PluginManager
 {
     constructor( pluginList )
     {
-        this.pluginList = pluginList;
-        this.callMap    = {
-            cfg: {
-                fn: [],
-                init: [],
+        this.pluginList   = pluginList;
+        this.callMap      = {
+            cfg:          {
+                fn:       [],
+                init:     [],
                 postInit: [],
-                finish: []
+                finish:   []
             },
-            ast: {
-                fn:         [],
-                init:       [],
-                postInit:   [],
-                finish:     [],
+            ast:          {
+                fn:       [],
+                init:     [],
+                postInit: [],
+                finish:   []
             },
-            cfgblock: {
+            cfgblock:     {
                 fn:         [],
                 init:       [],
                 finish:     [],
@@ -47,16 +46,17 @@ export default class PluginManager
                 finish:     [],
                 postFinish: []
             },
-            output: {
+            output:       {
                 tableheaders: [],
-                tablerows: [],
-                asstring: [],
-                json: []
+                tablerows:    [],
+                asstring:     [],
+                json:         []
             },
-            general: {
+            general:      {
                 postload: [],
-                preexit: []
-            }
+                preexit:  []
+            },
+            parse:        ( tk, sk, source, options ) => parse( source, options )
         };
         this.allFunctions = [];
     }
@@ -91,7 +91,7 @@ export default class PluginManager
 
             forKeys( cbs, ( value, topKey ) => {
 
-                if (  !isTop( topKey ) ) return;
+                if ( !isTop( topKey ) ) return;
 
                 let add    = _add( group( topKey ) ),
                     add_fn = ( fn, subKey ) => {
@@ -113,16 +113,26 @@ export default class PluginManager
         } );
     }
 
+    /**
+     * @param {string} topKey
+     * @param {?string} subKey
+     * @param { ...*} args
+     * @return {*}
+     */
     callback( topKey, subKey, ...args )
     {
         const
             top = this.callMap[ topKey ],
-            sub = top[ subKey ];
+            sub = subKey && top[ subKey ];
 
-        if ( top.fn.length )
+        if ( func( top ) )
+            return top( topKey, subKey, ...args );
+        else if ( array( top ) && top.fn.length )
             top.fn.length.forEach( cb => cb( topKey, subKey, ...args ) );
 
-        if ( sub.length )
+        if ( func( sub ) )
+            return sub( topKey, subKey, ...args );
+        else if ( array( sub ) && sub.length )
             sub.length.forEach( cb => cb( topKey, subKey, ...args ) );
     }
 }
