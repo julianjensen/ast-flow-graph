@@ -10,6 +10,7 @@ import assert from 'assert';
 import { traverse, Syntax } from 'estraverse';
 import { analyze } from 'escope';
 import { parse, VisitorKeys } from 'espree';
+import { plugin } from './utils';
 
 const
     { isArray: array } = Array,
@@ -64,6 +65,9 @@ export default class AST
 
         this.source        = source;
         this.renameOffsets = [];
+
+        plugin( 'ast', 'init', this );
+
         // this.root          = this.ast = espree.parse( source, options );
         this.root          = this.ast = parse( source, options );
 
@@ -78,6 +82,8 @@ export default class AST
 
         let index   = 0,
             labeled = [];
+
+        plugin( 'ast', 'postinit', this );
 
         // this.traverse( ( node, parent ) => {
         this.walker( ( node, parent, _, field, findex ) => {
@@ -103,10 +109,9 @@ export default class AST
                     range: node.range
                 } );
             }
-
-
-
         } );
+
+        plugin( 'ast', 'finish', this );
 
         // this.escope = escope.analyze( this.ast, {
         this.traverse( node => {
@@ -126,8 +131,9 @@ export default class AST
                 label: node.label.name,
                 node:  node
             } );
-
         } );
+
+        plugin( 'ast', 'postfinish', this );
     }
 
     /**

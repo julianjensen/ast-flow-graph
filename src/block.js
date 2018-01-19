@@ -6,9 +6,9 @@
  *********************************************************************************************************************/
 "use strict";
 
-import assert                          from 'assert';
-import { Block, Edge, enum_to_string } from './types';
-import { display_options, array }      from './utils';
+import assert                             from 'assert';
+import { Block, Edge, enum_to_string }    from './types';
+import { display_options, array, plugin } from './utils';
 
 const
     {
@@ -50,6 +50,8 @@ export default class CFGBlock
 
         this.createdBy = '';
         this.scope     = null;
+
+        plugin( 'cfgblock', 'init', this );
     }
 
     /**

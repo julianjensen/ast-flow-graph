@@ -7,6 +7,9 @@
 "use strict";
 
 import chalk from 'chalk';
+import PluginManager from './plugins';
+
+let pluginManager;
 
 export const
     { isArray: array } = Array,
@@ -62,4 +65,14 @@ export const
     },
     display_options    = function( fancy ) {
         return Object.assign( { SPACE_PER_EDGE: 4, MAX_EDGES: 7 }, fancy ? nice : dull );
+    },
+    load_plugins = function( list ) {
+        if ( list )
+        {
+            pluginManager = new PluginManager( list );
+            pluginManager.load_plugins();
+        }
+    },
+    plugin = function( topKey, subKey, ...args ) {
+        if ( pluginManager ) pluginManager.callback( topKey, subKey, ...args );
     };

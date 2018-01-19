@@ -4,13 +4,16 @@
  * @since 1.0.0
  * @date 26-Nov-2017
  *********************************************************************************************************************/
+
 "use strict";
 
-import AST from './ast';
+import AST            from './ast';
 import create_new_cfg from './leader';
+import { plugin }     from './utils';
 
 const
     defaultOptions = {
+        plugins:   [],
         ssaSource: false,
         parser:    {
             loc:          true,
@@ -40,14 +43,18 @@ export default class CFG
     {
         const
             ecma = Object.assign( {}, defaultOptions.parser.ecmaFeatures, options.parser && options.parser.ecmaFeatures || {} ),
-            p = Object.assign( {}, defaultOptions.parser, options.parser || {} );
+            p    = Object.assign( {}, defaultOptions.parser, options.parser || {} );
 
-        this.options = Object.assign( {}, defaultOptions, options );
-        this.options.parser = p;
+        this.options                     = Object.assign( {}, defaultOptions, options );
+        this.options.parser              = p;
         this.options.parser.ecmaFeatures = ecma;
 
-        this.ast     = new AST( source, this.options.parser );
-        this.cfgs    = [];
+        plugin( 'cfg', 'init', this );
+        this.ast  = new AST( source, this.options.parser );
+        this.cfgs = [];
+        plugin( 'cfg', 'postinit', this );
+        this.preGen = false;
+        this.preGenName = new Set();
     }
 
     /**
@@ -76,6 +83,13 @@ export default class CFG
         {
             for ( const func of this.ast.forFunctions() )
                 this.cfgs.push( create_new_cfg( func, this.ast, this.options ) );
+
+            if ( !this.preGen )
+            {
+                this.preGen = true;
+                plugin( 'cfg', 'finish', this );
+            }
+
             return this;
         }
         else
@@ -85,8 +99,17 @@ export default class CFG
             if ( !func )
                 return null;
 
-            return create_new_cfg( func, this.ast, this.options );
+            const cfgInfo = create_new_cfg( func, this.ast, this.options );
+
+            if ( !this.preGenName.has( name ) )
+            {
+                this.preGenName.add( name );
+                plugin( 'cfg', 'finish', this );
+            }
+
+            return cfgInfo;
         }
+
     }
 
     /**

@@ -6,13 +6,13 @@
  *********************************************************************************************************************/
 "use strict";
 
-import assert          from 'assert';
-import { error, warn } from './utils';
-import { postOrder }   from 'traversals';
-import dot             from './dot';
-import CFGBlock        from './block';
-import { Block, Edge } from './types';
-import Edges           from './edges';
+import assert                  from 'assert';
+import { error, warn, plugin } from './utils';
+import { postOrder }           from 'traversals';
+import dot                     from './dot';
+import CFGBlock                from './block';
+import { Block, Edge }         from './types';
+import Edges                   from './edges';
 
 /**
  * @param {AST} ast
@@ -35,6 +35,7 @@ export default class BlockManager
         this.toExit    = [];
         this.ast       = ast;
         this.options   = options;
+        plugin( 'blockmanager', 'init', this );
     }
 
     /**
@@ -62,9 +63,12 @@ export default class BlockManager
                 b.classify( this.exitNode, b.deferredEdgeType );
         } );
 
+        plugin( 'blockmanager', 'finish', this );
         this.clean();
 
         BlockManager.blockId = this.size = this.blocks.length;
+
+        plugin( 'blockmanager', 'postfinish', this );
     }
 
     /**

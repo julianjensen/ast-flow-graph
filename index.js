@@ -6,9 +6,31 @@
  *********************************************************************************************************************/
 "use strict";
 
-require = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
-const { CFG } = require( './src/cfg' ).default;
-const { Block, Edge } = require( './src/types' );
-module.exports = { CFG, Block, Edge };
-// module.exports = require( './src/cfg' ).default;
+require                        = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
+const CFG                      = require( './src/cfg' ).default;
+const { Block, Edge }          = require( './src/types' );
+const BlockManager             = require( './src/manager' ).default;
+const AST                      = require( './src/ast' ).default;
+const { load_plugins, plugin } = require( './src/utils' );
+
+let loaded = false;
+
+/**
+ * @param {string} s
+ * @param {object} [o]
+ * @return {CFG}
+ */
+function load( s, o )
+{
+    if ( !loaded && o && o.plugins )
+    {
+        loaded = true;
+        load_plugins( o.plugins );
+        plugin( 'general', 'postload' );
+    }
+
+    return new CFG( s, o );
+}
+
+module.exports = { CFG: load, Block, Edge };
 

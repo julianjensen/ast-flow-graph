@@ -11,6 +11,7 @@ import { str_table } from './dump';
 import { Block, Edge } from './types';
 import BlockManager from './manager';
 import * as visitors from './visitors';
+import { plugin } from './utils';
 
 const
     { isArray: array } = Array;
@@ -126,9 +127,14 @@ function flat_walker( block, nodes, visitorHelper )
      */
     function add_cfg( node )
     {
+        let cbBlock;
+
         if ( visitors[ node.type ] )
         {
+            cbBlock = visitorHelper.block;
             let outputs = visitors[ node.type ]( node, visitorHelper );
+
+            plugin( 'cfgblock', 'finish', cbBlock );
 
             if ( !outputs )
             {
@@ -165,6 +171,8 @@ function flat_walker( block, nodes, visitorHelper )
         }
         else if ( visitorHelper.block )
             visitorHelper.block.add( node );
+
+        plugin( 'cfgblock', 'postFinish', cbBlock );
     }
 
     visitorHelper.ast.flat_walker( nodes, add_cfg );
