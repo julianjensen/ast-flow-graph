@@ -7,13 +7,18 @@
 "use strict";
 
 import { parse } from 'espree';
+import { format } from 'util';
+
+let debugTrack = false;
 
 const
     func               = fn => typeof fn === 'function',
     obj                = o => typeof o === 'object' && !Array.isArray( o ) && o !== null,
     { isArray: array } = Array,
     isTop              = topKey => [ 'parse', 'cfg', 'ast', 'cfgblock', 'manager', 'general' ].includes( topKey.toLowerCase() ),
-    forKeys            = ( o, cb ) => obj( o ) && Object.keys( o ).forEach( k => cb( o[ k ], k ) );
+    forKeys            = ( o, cb ) => obj( o ) && Object.keys( o ).forEach( k => cb( o[ k ], k ) ),
+    dout               = ( ...args ) => debugTrack && process.stdout.write( format( ...args ) ),
+    dlog               = ( ...args ) => debugTrack && console.log( ...args );
 
 export default class PluginManager
 {
@@ -65,10 +70,14 @@ export default class PluginManager
     {
         try
         {
-            return require( moduleName );
+            dout( `Attempting to load "${moduleName}"...` );
+            const m = require( moduleName );
+            dlog( 'ok' );
+            return m;
         }
         catch ( err )
         {
+            dlog( 'fail:', err );
             return null;
         }
     }
@@ -121,18 +130,29 @@ export default class PluginManager
      */
     callback( topKey, subKey, ...args )
     {
+        dout( `Plugin callback for ${topKey}.${subKey || '*'} = ` );
         const
             top = this.callMap[ topKey ],
             sub = subKey && top[ subKey ];
 
+        dout( `top func? ${func( top )}, top array? ${array( top.fn )} [${array( top.fn ) && top.fn.length}]` );
         if ( func( top ) )
+        {
+            dlog( ' done' );
             return top( topKey, subKey, ...args );
+        }
         else if ( array( top ) && top.fn.length )
             top.fn.length.forEach( cb => cb( topKey, subKey, ...args ) );
 
+        dout( `, sub func? ${func( top )}, top array? ${array( top.fn )} [${array( top.fn ) && top.fn.length}]` );
         if ( func( sub ) )
+        {
+            dlog( ' done' );
             return sub( topKey, subKey, ...args );
+        }
         else if ( array( sub ) && sub.length )
             sub.length.forEach( cb => cb( topKey, subKey, ...args ) );
+
+        dlog( ' done' );
     }
 }

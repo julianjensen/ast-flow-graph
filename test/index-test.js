@@ -8,6 +8,12 @@
 
 import { expect } from 'chai';
 import fs from 'fs';
+
+import {
+          load_plugins
+      } from '../src/utils';
+
+load_plugins();
 import CFG from '../src/cfg';
 import AST from '../src/ast';
 

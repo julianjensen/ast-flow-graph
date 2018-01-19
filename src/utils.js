@@ -80,11 +80,8 @@ export const
      * @private
      */
     load_plugins = function( list ) {
-        if ( list )
-        {
-            pluginManager = new PluginManager( list );
-            pluginManager.load_plugins();
-        }
+        pluginManager = new PluginManager( list || [] );
+        pluginManager.load_plugins();
     },
     /**
      * @param {string} topKey

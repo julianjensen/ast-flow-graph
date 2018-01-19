@@ -121,7 +121,7 @@ This section is a work in progress. The `headers`, `rows`, and `json` are not im
 
 #### Other
 
-- `parse` called to parse the source code
+-   `parse` called to parse the source code
 
 ## API
 
@@ -138,13 +138,17 @@ This section is a work in progress. The `headers`, `rows`, and `json` are not im
     -   [iterator](#iterator)
     -   [forEach](#foreach)
     -   [create_dot](#create_dot)
-    -   [The for Statement](#the-for-statement)
-    -   [The if Statement](#the-if-statement)
-    -   [The switch Statement](#the-switch-statement)
--   [Block](#block)
--   [Edge](#edge)
--   [defaultOutputOptions](#defaultoutputoptions)
--   [output](#output)
+-   [AST](#ast)
+    -   [node_to_scope](#node_to_scope)
+    -   [forFunctions](#forfunctions)
+    -   [traverse](#traverse)
+    -   [walker](#walker)
+    -   [flat_walker](#flat_walker)
+    -   [call_visitors](#call_visitors)
+    -   [add_line](#add_line)
+    -   [rename](#rename)
+    -   [as_source](#as_source)
+    -   [get_from_function](#get_from_function)
 -   [BlockManager](#blockmanager)
     -   [blocks](#blocks)
     -   [forEach](#foreach-1)
@@ -201,21 +205,19 @@ This section is a work in progress. The `headers`, `rows`, and `json` are not im
     -   [edges](#edges-1)
     -   [preds](#preds-1)
     -   [pred_edges](#pred_edges)
--   [AST](#ast)
-    -   [node_to_scope](#node_to_scope)
-    -   [forFunctions](#forfunctions)
-    -   [traverse](#traverse)
-    -   [walker](#walker)
-    -   [flat_walker](#flat_walker)
-    -   [call_visitors](#call_visitors)
-    -   [add_line](#add_line)
-    -   [rename](#rename)
-    -   [as_source](#as_source)
-    -   [get_from_function](#get_from_function)
+    -   [The for Statement](#the-for-statement)
+    -   [The if Statement](#the-if-statement)
+    -   [The switch Statement](#the-switch-statement)
+-   [Block](#block)
+-   [Edge](#edge)
+-   [defaultOutputOptions](#defaultoutputoptions)
+-   [output](#output)
+-   [pluginManager](#pluginmanager)
+-   [callback](#callback)
 
 ### 
 
-[index.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/index.js#L7-L7 "Source code on GitHub")
+[index.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/index.js#L7-L7 "Source code on GitHub")
 
 Description of file here.
 
@@ -226,7 +228,7 @@ Description of file here.
 
 ### load
 
-[index.js:23-33](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/index.js#L23-L33 "Source code on GitHub")
+[index.js:21-31](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/index.js#L21-L31 "Source code on GitHub")
 
 **Parameters**
 
@@ -237,7 +239,7 @@ Returns **[CFG](#cfg)**
 
 ### 
 
-[src/cfg.js:8-8](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L8-L8 "Source code on GitHub")
+[src/cfg.js:8-8](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L8-L8 "Source code on GitHub")
 
 The main CFG definition class. Generally, you start here.
 
@@ -248,7 +250,7 @@ The main CFG definition class. Generally, you start here.
 
 ### CFG
 
-[src/cfg.js:36-149](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L36-L149 "Source code on GitHub")
+[src/cfg.js:36-152](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L36-L152 "Source code on GitHub")
 
 **Parameters**
 
@@ -257,19 +259,19 @@ The main CFG definition class. Generally, you start here.
 
 #### toString
 
-[src/cfg.js:63-66](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L63-L66 "Source code on GitHub")
+[src/cfg.js:64-67](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L64-L67 "Source code on GitHub")
 
 Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
 
 #### toTable
 
-[src/cfg.js:71-74](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L71-L74 "Source code on GitHub")
+[src/cfg.js:72-75](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L72-L75 "Source code on GitHub")
 
 Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
 
 #### generate
 
-[src/cfg.js:80-113](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L80-L113 "Source code on GitHub")
+[src/cfg.js:81-116](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L81-L116 "Source code on GitHub")
 
 **Parameters**
 
@@ -279,7 +281,7 @@ Returns **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/G
 
 #### by_name
 
-[src/cfg.js:119-122](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L119-L122 "Source code on GitHub")
+[src/cfg.js:122-125](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L122-L125 "Source code on GitHub")
 
 **Parameters**
 
@@ -289,11 +291,11 @@ Returns **CFGInfo**
 
 #### iterator
 
-[src/cfg.js:127-130](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L127-L130 "Source code on GitHub")
+[src/cfg.js:130-133](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L130-L133 "Source code on GitHub")
 
 #### forEach
 
-[src/cfg.js:135-138](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L135-L138 "Source code on GitHub")
+[src/cfg.js:138-141](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L138-L141 "Source code on GitHub")
 
 **Parameters**
 
@@ -301,7 +303,7 @@ Returns **CFGInfo**
 
 #### create_dot
 
-[src/cfg.js:145-148](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/cfg.js#L145-L148 "Source code on GitHub")
+[src/cfg.js:148-151](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/cfg.js#L148-L151 "Source code on GitHub")
 
 **Parameters**
 
@@ -312,7 +314,122 @@ Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/G
 
 ### 
 
-[src/leader.js:8-8](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/leader.js#L8-L8 "Source code on GitHub")
+[src/ast.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L7-L7 "Source code on GitHub")
+
+Manages the AST, does some scans, and provides walkers.
+
+**Meta**
+
+-   **since**: 1.0.0
+-   **author**: Julian Jensen &lt;jjdanois@gmail.com>
+
+### AST
+
+[src/ast.js:42-490](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L42-L490 "Source code on GitHub")
+
+**Parameters**
+
+-   `source` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+-   `options` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+#### node_to_scope
+
+[src/ast.js:147-160](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L147-L160 "Source code on GitHub")
+
+**Parameters**
+
+-   `node` **AnnotatedNode** 
+
+Returns **any** 
+
+#### forFunctions
+
+[src/ast.js:165-168](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L165-L168 "Source code on GitHub")
+
+#### traverse
+
+[src/ast.js:201-218](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L201-L218 "Source code on GitHub")
+
+**Parameters**
+
+-   `ast` **([Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling) \| [function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function))** 
+-   `enter` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)??** 
+-   `leave` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)??** 
+
+#### walker
+
+[src/ast.js:225-269](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L225-L269 "Source code on GitHub")
+
+**Parameters**
+
+-   `node` **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))** 
+-   `enter` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)?**  (optional, default `()=>{}`)
+-   `leave` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)?**  (optional, default `()=>{}`)
+
+#### flat_walker
+
+[src/ast.js:277-291](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L277-L291 "Source code on GitHub")
+
+Iterate over all nodes in a block without recursing into sub-nodes.
+
+**Parameters**
+
+-   `nodes` **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;AnnotatedNode> | AnnotatedNode)** 
+-   `cb` **function (AnnotatedNode, function (AnnotatedNode): [boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)): [boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
+#### call_visitors
+
+[src/ast.js:299-304](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L299-L304 "Source code on GitHub")
+
+Callback for each visitor key for a given node.
+
+**Parameters**
+
+-   `node` **AnnotatedNode** 
+-   `cb`  
+
+#### add_line
+
+[src/ast.js:312-330](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L312-L330 "Source code on GitHub")
+
+Add a new line to the source code.
+
+**Parameters**
+
+-   `lineNumber` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 0-based line number
+-   `sourceLine` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The source line to add
+
+#### rename
+
+[src/ast.js:336-342](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L336-L342 "Source code on GitHub")
+
+**Parameters**
+
+-   `inode` **(Identifier | AnnotatedNode)** A node of type Syntax.Identifier
+-   `newName` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The new name of the identifier
+
+#### as_source
+
+[src/ast.js:348-366](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L348-L366 "Source code on GitHub")
+
+Return the AST nodes as source code, including any modifications made.
+
+Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The lossy source code
+
+#### get_from_function
+
+[src/ast.js:374-489](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/ast.js#L374-L489 "Source code on GitHub")
+
+**Parameters**
+
+-   `node` **(FunctionDeclaration | FunctionExpression | MethodDefinition | ArrowFunctionExpression | Property | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))** 
+-   `whatToGet` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**  (optional, default `'all'`)
+
+Returns **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling)> | [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String) | CFGInfo)** 
+
+### 
+
+[src/leader.js:8-8](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/leader.js#L8-L8 "Source code on GitHub")
 
 Describe what cfg does.
 
@@ -323,7 +440,7 @@ Describe what cfg does.
 
 ### 
 
-[src/dump.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/dump.js#L7-L7 "Source code on GitHub")
+[src/dump.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/dump.js#L7-L7 "Source code on GitHub")
 
 Functions to dump out information as pretty CLI tables.
 
@@ -334,7 +451,564 @@ Functions to dump out information as pretty CLI tables.
 
 ### 
 
-[src/visitors.js:156-156](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/visitors.js#L156-L156 "Source code on GitHub")
+[src/manager.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L7-L7 "Source code on GitHub")
+
+The class that manages the individual blocks.
+
+**Meta**
+
+-   **since**: 1.0.0
+-   **author**: Julian Jensen &lt;jjdanois@gmail.com>
+
+### BlockManager
+
+[src/manager.js:21-330](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L21-L330 "Source code on GitHub")
+
+**Parameters**
+
+-   `ast` **[AST](#ast)** 
+-   `options` **CFGOptions** 
+
+#### blocks
+
+[src/manager.js:33-33](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L33-L33 "Source code on GitHub")
+
+#### forEach
+
+[src/manager.js:81-84](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L81-L84 "Source code on GitHub")
+
+**Parameters**
+
+-   `fn` **function ([CFGBlock](#cfgblock), [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number), [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>): any** 
+
+#### map
+
+[src/manager.js:89-92](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L89-L92 "Source code on GitHub")
+
+**Parameters**
+
+-   `fn` **function ([CFGBlock](#cfgblock), [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number), [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>): any** 
+
+#### get
+
+[src/manager.js:98-101](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L98-L101 "Source code on GitHub")
+
+**Parameters**
+
+-   `index` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### toString
+
+[src/manager.js:124-127](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L124-L127 "Source code on GitHub")
+
+Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+#### toTable
+
+[src/manager.js:132-135](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L132-L135 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** 
+
+#### iterator
+
+[src/manager.js:140-147](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L140-L147 "Source code on GitHub")
+
+#### create_dot
+
+[src/manager.js:153-178](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/manager.js#L153-L178 "Source code on GitHub")
+
+**Parameters**
+
+-   `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+### 
+
+[src/dot.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/dot.js#L7-L7 "Source code on GitHub")
+
+Create a DOT file for graphviz.
+
+**Meta**
+
+-   **since**: 1.0.0
+-   **author**: Julian Jensen &lt;jjdanois@gmail.com>
+
+### 
+
+[src/block.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L7-L7 "Source code on GitHub")
+
+CFG block definition, equivalent to a basic block in compiler parlance.
+
+**Meta**
+
+-   **since**: 1.0.0
+-   **author**: Julian Jensen &lt;jjdanois@gmail.com>
+
+### CFGBlock
+
+[src/block.js:32-466](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L32-L466 "Source code on GitHub")
+
+**Parameters**
+
+-   `id` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+-   `edges` **[Edges](#edges)** 
+
+#### nodes
+
+[src/block.js:46-46](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L46-L46 "Source code on GitHub")
+
+#### succesors_as_indices
+
+[src/block.js:61-64](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L61-L64 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** 
+
+#### successors
+
+[src/block.js:69-72](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L69-L72 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
+
+#### succs
+
+[src/block.js:77-80](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L77-L80 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
+
+#### preds
+
+[src/block.js:85-88](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L85-L88 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
+
+#### isEmpty
+
+[src/block.js:93-96](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L93-L96 "Source code on GitHub")
+
+Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
+#### classify
+
+[src/block.js:103-107](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L103-L107 "Source code on GitHub")
+
+**Parameters**
+
+-   `to` **([number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number) \| [CFGBlock](#cfgblock))** 
+-   `type` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### follows
+
+[src/block.js:113-123](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L113-L123 "Source code on GitHub")
+
+**Parameters**
+
+-   `cb` **([CFGBlock](#cfgblock) \| [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### from
+
+[src/block.js:129-132](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L129-L132 "Source code on GitHub")
+
+**Parameters**
+
+-   `cb` **([CFGBlock](#cfgblock) \| [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### to
+
+[src/block.js:138-150](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L138-L150 "Source code on GitHub")
+
+**Parameters**
+
+-   `cb` **([CFGBlock](#cfgblock) \| [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### remove_succs
+
+[src/block.js:155-159](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L155-L159 "Source code on GitHub")
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### remove_succ
+
+[src/block.js:165-169](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L165-L169 "Source code on GitHub")
+
+**Parameters**
+
+-   `kill` **([number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number) \| [CFGBlock](#cfgblock))** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### as
+
+[src/block.js:175-187](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L175-L187 "Source code on GitHub")
+
+**Parameters**
+
+-   `nodeType` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### edge_as
+
+[src/block.js:196-202](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L196-L202 "Source code on GitHub")
+
+Sets the last edge to type.
+
+**Parameters**
+
+-   `edgeType` **[Edge](#edge)** 
+-   `to` **([number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number) \| [CFGBlock](#cfgblock))?** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### not
+
+[src/block.js:210-214](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L210-L214 "Source code on GitHub")
+
+Removes a type from this block.
+
+**Parameters**
+
+-   `nodeType` **[Edge](#edge)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### whenTrue
+
+[src/block.js:222-229](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L222-L229 "Source code on GitHub")
+
+For test nodes, this adds the edge taken when the condition is true.
+
+**Parameters**
+
+-   `block` **[CFGBlock](#cfgblock)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### whenFalse
+
+[src/block.js:237-244](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L237-L244 "Source code on GitHub")
+
+For test nodes, this adds the edge taken when the condition is false.
+
+**Parameters**
+
+-   `block` **[CFGBlock](#cfgblock)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### add
+
+[src/block.js:252-258](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L252-L258 "Source code on GitHub")
+
+Add a current-level AST node to this block.
+
+**Parameters**
+
+-   `node` **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### first
+
+[src/block.js:265-268](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L265-L268 "Source code on GitHub")
+
+Returns the first AST node (if any) of this block.
+
+Returns **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))?** 
+
+#### last
+
+[src/block.js:275-278](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L275-L278 "Source code on GitHub")
+
+Returns the last AST node (if any) of this block.
+
+Returns **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))?** 
+
+#### by
+
+[src/block.js:286-290](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L286-L290 "Source code on GitHub")
+
+Free-text field indicating the manner of of creation of this node. For information in graphs and printouts only.
+
+**Parameters**
+
+-   `txt` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+Returns **[CFGBlock](#cfgblock)** 
+
+#### isa
+
+[src/block.js:298-301](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L298-L301 "Source code on GitHub")
+
+Check if this block has a particular type.
+
+**Parameters**
+
+-   `typeName` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
+#### eliminate
+
+[src/block.js:308-316](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L308-L316 "Source code on GitHub")
+
+Remove itself if it's an empty node and isn't the start or exit node.
+
+Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** true if it was deleted
+
+#### defer_edge_type
+
+[src/block.js:321-324](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L321-L324 "Source code on GitHub")
+
+**Parameters**
+
+-   `type` **[Edge](#edge)** 
+
+#### graph_label
+
+[src/block.js:337-347](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L337-L347 "Source code on GitHub")
+
+For the vertices.
+
+Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+#### lines
+
+[src/block.js:354-378](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L354-L378 "Source code on GitHub")
+
+Stringified line numbers for this block.
+
+Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+#### pred_edge_types
+
+[src/block.js:383-386](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L383-L386 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
+
+#### succ_edge_types
+
+[src/block.js:391-394](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L391-L394 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
+
+#### split_by
+
+[src/block.js:401-414](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L401-L414 "Source code on GitHub")
+
+**Parameters**
+
+-   `arr` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;any>** 
+-   `chunkSize` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+Returns **ArrayArray&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
+
+#### toRow
+
+[src/block.js:421-437](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L421-L437 "Source code on GitHub")
+
+Headers are
+TYPE / LINES / LEFT EDGES / NODE / RIGHT EDGES / CREATED BY / AST
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
+
+#### toString
+
+[src/block.js:442-464](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/block.js#L442-L464 "Source code on GitHub")
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
+
+### 
+
+[src/edges.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L7-L7 "Source code on GitHub")
+
+Handles all edges.
+
+**Meta**
+
+-   **since**: 1.0.0
+-   **author**: Julian Jensen &lt;jjdanois@gmail.com>
+
+### Edges
+
+[src/edges.js:51-409](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L51-L409 "Source code on GitHub")
+
+Keeps track of edges apart from the successors listed in the [CFGBlock](#cfgblock) so we can
+attach types and classifications on edges separate from their blocks.
+
+**Parameters**
+
+-   `bm` **[BlockManager](#blockmanager)** 
+
+#### reindex
+
+[src/edges.js:82-96](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L82-L96 "Source code on GitHub")
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+
+Returns **[Edges](#edges)** 
+
+#### add
+
+[src/edges.js:106-121](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L106-L121 "Source code on GitHub")
+
+Add an edge between to CFGBlocks.
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `type` **[Edge](#edge)**  (optional, default `Edge.NONE`)
+
+Returns **[Edges](#edges)** 
+
+#### classify
+
+[src/edges.js:131-140](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L131-L140 "Source code on GitHub")
+
+Set a type on an arbitrary edge.
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `ctype` **[Edge](#edge)** 
+
+Returns **[Edges](#edges)** 
+
+#### not
+
+[src/edges.js:150-158](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L150-L158 "Source code on GitHub")
+
+Remove a type from an arbitrary edge.
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `type` **[Edge](#edge)** 
+
+Returns **[Edges](#edges)** 
+
+#### retarget_multiple
+
+[src/edges.js:218-231](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L218-L231 "Source code on GitHub")
+
+Point one or more edges to a new [CFGBlock](#cfgblock), used in block removal.
+
+**Parameters**
+
+-   `node` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+
+Returns **[Edges](#edges)** 
+
+#### remove_succ
+
+[src/edges.js:240-258](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L240-L258 "Source code on GitHub")
+
+Remove a successor [CFGBlock](#cfgblock) from a [CFGBlock](#cfgblock)
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+
+Returns **[Edges](#edges)** 
+
+#### get_succs
+
+[src/edges.js:266-273](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L266-L273 "Source code on GitHub")
+
+Get all successors for a given [CFGBlock](#cfgblock).
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
+
+#### get_preds
+
+[src/edges.js:281-288](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L281-L288 "Source code on GitHub")
+
+Get all predecessors for a given [CFGBlock](#cfgblock)
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
+
+#### renumber
+
+[src/edges.js:295-318](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L295-L318 "Source code on GitHub")
+
+Renumber all indices (`id` field) because of removed [CFGBlock](#cfgblock)s.
+
+**Parameters**
+
+-   `newOffsets` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** 
+
+#### successors
+
+[src/edges.js:347-350](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L347-L350 "Source code on GitHub")
+
+#### has
+
+[src/edges.js:359-367](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L359-L367 "Source code on GitHub")
+
+Is there an edge of the gievn type?
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+-   `type` **[Edge](#edge)** 
+
+Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
+#### edges
+
+[src/edges.js:375-380](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L375-L380 "Source code on GitHub")
+
+Get edge information for a given [CFGBlock](#cfgblock), i.e. successors.
+
+**Parameters**
+
+-   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+
+#### preds
+
+[src/edges.js:387-393](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L387-L393 "Source code on GitHub")
+
+Get all predecessors for a given [CFGBlock](#cfgblock)
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** 
+
+#### pred_edges
+
+[src/edges.js:401-408](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/edges.js#L401-L408 "Source code on GitHub")
+
+Get all predecessor edge information for a given [CFGBlock](#cfgblock).
+
+**Parameters**
+
+-   `_from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
+
+### 
+
+[src/visitors.js:156-156](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/visitors.js#L156-L156 "Source code on GitHub")
 
 #### The `for` Statement
 
@@ -491,7 +1165,7 @@ if last
 
 ### 
 
-[src/types.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/types.js#L7-L7 "Source code on GitHub")
+[src/types.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/types.js#L7-L7 "Source code on GitHub")
 
 Think types.h
 
@@ -502,21 +1176,21 @@ Think types.h
 
 ### Block
 
-[src/types.js:28-42](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/types.js#L28-L42 "Source code on GitHub")
+[src/types.js:28-42](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/types.js#L28-L42 "Source code on GitHub")
 
 ### Edge
 
-[src/types.js:52-68](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/types.js#L52-L68 "Source code on GitHub")
+[src/types.js:52-68](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/types.js#L52-L68 "Source code on GitHub")
 
 ### defaultOutputOptions
 
-[src/types.js:77-87](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/types.js#L77-L87 "Source code on GitHub")
+[src/types.js:77-87](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/types.js#L77-L87 "Source code on GitHub")
 
 The default display options for table and string output.
 
 ### output
 
-[src/types.js:96-99](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/types.js#L96-L99 "Source code on GitHub")
+[src/types.js:96-99](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/types.js#L96-L99 "Source code on GitHub")
 
 Override display options.
 
@@ -526,679 +1200,7 @@ Override display options.
 
 ### 
 
-[src/manager.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L7-L7 "Source code on GitHub")
-
-The class that manages the individual blocks.
-
-**Meta**
-
--   **since**: 1.0.0
--   **author**: Julian Jensen &lt;jjdanois@gmail.com>
-
-### BlockManager
-
-[src/manager.js:21-326](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L21-L326 "Source code on GitHub")
-
-**Parameters**
-
--   `ast` **[AST](#ast)** 
--   `options` **CFGOptions** 
-
-#### blocks
-
-[src/manager.js:32-32](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L32-L32 "Source code on GitHub")
-
-#### forEach
-
-[src/manager.js:77-80](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L77-L80 "Source code on GitHub")
-
-**Parameters**
-
--   `fn` **function ([CFGBlock](#cfgblock), [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number), [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>): any** 
-
-#### map
-
-[src/manager.js:85-88](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L85-L88 "Source code on GitHub")
-
-**Parameters**
-
--   `fn` **function ([CFGBlock](#cfgblock), [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number), [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>): any** 
-
-#### get
-
-[src/manager.js:94-97](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L94-L97 "Source code on GitHub")
-
-**Parameters**
-
--   `index` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### toString
-
-[src/manager.js:120-123](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L120-L123 "Source code on GitHub")
-
-Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
-
-#### toTable
-
-[src/manager.js:128-131](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L128-L131 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** 
-
-#### iterator
-
-[src/manager.js:136-143](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L136-L143 "Source code on GitHub")
-
-#### create_dot
-
-[src/manager.js:149-174](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/manager.js#L149-L174 "Source code on GitHub")
-
-**Parameters**
-
--   `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
-
-Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
-
-### 
-
-[src/dot.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/dot.js#L7-L7 "Source code on GitHub")
-
-Create a DOT file for graphviz.
-
-**Meta**
-
--   **since**: 1.0.0
--   **author**: Julian Jensen &lt;jjdanois@gmail.com>
-
-### 
-
-[src/block.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L7-L7 "Source code on GitHub")
-
-CFG block definition, equivalent to a basic block in compiler parlance.
-
-**Meta**
-
--   **since**: 1.0.0
--   **author**: Julian Jensen &lt;jjdanois@gmail.com>
-
-### CFGBlock
-
-[src/block.js:32-465](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L32-L465 "Source code on GitHub")
-
-**Parameters**
-
--   `id` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
--   `edges` **[Edges](#edges)** 
-
-#### nodes
-
-[src/block.js:46-46](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L46-L46 "Source code on GitHub")
-
-#### succesors_as_indices
-
-[src/block.js:60-63](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L60-L63 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** 
-
-#### successors
-
-[src/block.js:68-71](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L68-L71 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
-
-#### succs
-
-[src/block.js:76-79](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L76-L79 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
-
-#### preds
-
-[src/block.js:84-87](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L84-L87 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
-
-#### isEmpty
-
-[src/block.js:92-95](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L92-L95 "Source code on GitHub")
-
-Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
-
-#### classify
-
-[src/block.js:102-106](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L102-L106 "Source code on GitHub")
-
-**Parameters**
-
--   `to` **([number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number) \| [CFGBlock](#cfgblock))** 
--   `type` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### follows
-
-[src/block.js:112-122](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L112-L122 "Source code on GitHub")
-
-**Parameters**
-
--   `cb` **([CFGBlock](#cfgblock) \| [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### from
-
-[src/block.js:128-131](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L128-L131 "Source code on GitHub")
-
-**Parameters**
-
--   `cb` **([CFGBlock](#cfgblock) \| [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### to
-
-[src/block.js:137-149](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L137-L149 "Source code on GitHub")
-
-**Parameters**
-
--   `cb` **([CFGBlock](#cfgblock) \| [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### remove_succs
-
-[src/block.js:154-158](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L154-L158 "Source code on GitHub")
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### remove_succ
-
-[src/block.js:164-168](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L164-L168 "Source code on GitHub")
-
-**Parameters**
-
--   `kill` **([number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number) \| [CFGBlock](#cfgblock))** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### as
-
-[src/block.js:174-186](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L174-L186 "Source code on GitHub")
-
-**Parameters**
-
--   `nodeType` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### edge_as
-
-[src/block.js:195-201](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L195-L201 "Source code on GitHub")
-
-Sets the last edge to type.
-
-**Parameters**
-
--   `edgeType` **[Edge](#edge)** 
--   `to` **([number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number) \| [CFGBlock](#cfgblock))?** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### not
-
-[src/block.js:209-213](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L209-L213 "Source code on GitHub")
-
-Removes a type from this block.
-
-**Parameters**
-
--   `nodeType` **[Edge](#edge)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### whenTrue
-
-[src/block.js:221-228](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L221-L228 "Source code on GitHub")
-
-For test nodes, this adds the edge taken when the condition is true.
-
-**Parameters**
-
--   `block` **[CFGBlock](#cfgblock)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### whenFalse
-
-[src/block.js:236-243](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L236-L243 "Source code on GitHub")
-
-For test nodes, this adds the edge taken when the condition is false.
-
-**Parameters**
-
--   `block` **[CFGBlock](#cfgblock)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### add
-
-[src/block.js:251-257](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L251-L257 "Source code on GitHub")
-
-Add a current-level AST node to this block.
-
-**Parameters**
-
--   `node` **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### first
-
-[src/block.js:264-267](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L264-L267 "Source code on GitHub")
-
-Returns the first AST node (if any) of this block.
-
-Returns **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))?** 
-
-#### last
-
-[src/block.js:274-277](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L274-L277 "Source code on GitHub")
-
-Returns the last AST node (if any) of this block.
-
-Returns **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))?** 
-
-#### by
-
-[src/block.js:285-289](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L285-L289 "Source code on GitHub")
-
-Free-text field indicating the manner of of creation of this node. For information in graphs and printouts only.
-
-**Parameters**
-
--   `txt` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
-
-Returns **[CFGBlock](#cfgblock)** 
-
-#### isa
-
-[src/block.js:297-300](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L297-L300 "Source code on GitHub")
-
-Check if this block has a particular type.
-
-**Parameters**
-
--   `typeName` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
-
-Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
-
-#### eliminate
-
-[src/block.js:307-315](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L307-L315 "Source code on GitHub")
-
-Remove itself if it's an empty node and isn't the start or exit node.
-
-Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** true if it was deleted
-
-#### defer_edge_type
-
-[src/block.js:320-323](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L320-L323 "Source code on GitHub")
-
-**Parameters**
-
--   `type` **[Edge](#edge)** 
-
-#### graph_label
-
-[src/block.js:336-346](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L336-L346 "Source code on GitHub")
-
-For the vertices.
-
-Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
-
-#### lines
-
-[src/block.js:353-377](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L353-L377 "Source code on GitHub")
-
-Stringified line numbers for this block.
-
-Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
-
-#### pred_edge_types
-
-[src/block.js:382-385](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L382-L385 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
-
-#### succ_edge_types
-
-[src/block.js:390-393](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L390-L393 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
-
-#### split_by
-
-[src/block.js:400-413](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L400-L413 "Source code on GitHub")
-
-**Parameters**
-
--   `arr` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;any>** 
--   `chunkSize` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
-
-Returns **ArrayArray&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
-
-#### toRow
-
-[src/block.js:420-436](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L420-L436 "Source code on GitHub")
-
-Headers are
-TYPE / LINES / LEFT EDGES / NODE / RIGHT EDGES / CREATED BY / AST
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
-
-#### toString
-
-[src/block.js:441-463](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/block.js#L441-L463 "Source code on GitHub")
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
-
-### 
-
-[src/edges.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L7-L7 "Source code on GitHub")
-
-Handles all edges.
-
-**Meta**
-
--   **since**: 1.0.0
--   **author**: Julian Jensen &lt;jjdanois@gmail.com>
-
-### Edges
-
-[src/edges.js:51-409](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L51-L409 "Source code on GitHub")
-
-Keeps track of edges apart from the successors listed in the [CFGBlock](#cfgblock) so we can
-attach types and classifications on edges separate from their blocks.
-
-**Parameters**
-
--   `bm` **[BlockManager](#blockmanager)** 
-
-#### reindex
-
-[src/edges.js:82-96](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L82-L96 "Source code on GitHub")
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
-
-Returns **[Edges](#edges)** 
-
-#### add
-
-[src/edges.js:106-121](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L106-L121 "Source code on GitHub")
-
-Add an edge between to CFGBlocks.
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `type` **[Edge](#edge)**  (optional, default `Edge.NONE`)
-
-Returns **[Edges](#edges)** 
-
-#### classify
-
-[src/edges.js:131-140](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L131-L140 "Source code on GitHub")
-
-Set a type on an arbitrary edge.
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `ctype` **[Edge](#edge)** 
-
-Returns **[Edges](#edges)** 
-
-#### not
-
-[src/edges.js:150-158](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L150-L158 "Source code on GitHub")
-
-Remove a type from an arbitrary edge.
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `type` **[Edge](#edge)** 
-
-Returns **[Edges](#edges)** 
-
-#### retarget_multiple
-
-[src/edges.js:218-231](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L218-L231 "Source code on GitHub")
-
-Point one or more edges to a new [CFGBlock](#cfgblock), used in block removal.
-
-**Parameters**
-
--   `node` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
-
-Returns **[Edges](#edges)** 
-
-#### remove_succ
-
-[src/edges.js:240-258](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L240-L258 "Source code on GitHub")
-
-Remove a successor [CFGBlock](#cfgblock) from a [CFGBlock](#cfgblock)
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `to` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
-
-Returns **[Edges](#edges)** 
-
-#### get_succs
-
-[src/edges.js:266-273](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L266-L273 "Source code on GitHub")
-
-Get all successors for a given [CFGBlock](#cfgblock).
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
-
-#### get_preds
-
-[src/edges.js:281-288](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L281-L288 "Source code on GitHub")
-
-Get all predecessors for a given [CFGBlock](#cfgblock)
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[CFGBlock](#cfgblock)>** 
-
-#### renumber
-
-[src/edges.js:295-318](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L295-L318 "Source code on GitHub")
-
-Renumber all indices (`id` field) because of removed [CFGBlock](#cfgblock)s.
-
-**Parameters**
-
--   `newOffsets` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** 
-
-#### successors
-
-[src/edges.js:347-350](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L347-L350 "Source code on GitHub")
-
-#### has
-
-[src/edges.js:359-367](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L359-L367 "Source code on GitHub")
-
-Is there an edge of the gievn type?
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
--   `type` **[Edge](#edge)** 
-
-Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
-
-#### edges
-
-[src/edges.js:375-380](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L375-L380 "Source code on GitHub")
-
-Get edge information for a given [CFGBlock](#cfgblock), i.e. successors.
-
-**Parameters**
-
--   `from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
-
-#### preds
-
-[src/edges.js:387-393](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L387-L393 "Source code on GitHub")
-
-Get all predecessors for a given [CFGBlock](#cfgblock)
-
-Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** 
-
-#### pred_edges
-
-[src/edges.js:401-408](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/edges.js#L401-L408 "Source code on GitHub")
-
-Get all predecessor edge information for a given [CFGBlock](#cfgblock).
-
-**Parameters**
-
--   `_from` **([CFGBlock](#cfgblock) \| [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number))** 
-
-### 
-
-[src/ast.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L7-L7 "Source code on GitHub")
-
-Manages the AST, does some scans, and provides walkers.
-
-**Meta**
-
--   **since**: 1.0.0
--   **author**: Julian Jensen &lt;jjdanois@gmail.com>
-
-### AST
-
-[src/ast.js:42-486](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L42-L486 "Source code on GitHub")
-
-**Parameters**
-
--   `source` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
--   `options` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
-
-#### node_to_scope
-
-[src/ast.js:143-156](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L143-L156 "Source code on GitHub")
-
-**Parameters**
-
--   `node` **AnnotatedNode** 
-
-Returns **any** 
-
-#### forFunctions
-
-[src/ast.js:161-164](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L161-L164 "Source code on GitHub")
-
-#### traverse
-
-[src/ast.js:197-214](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L197-L214 "Source code on GitHub")
-
-**Parameters**
-
--   `ast` **([Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling) \| [function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function))** 
--   `enter` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)??** 
--   `leave` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)??** 
-
-#### walker
-
-[src/ast.js:221-265](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L221-L265 "Source code on GitHub")
-
-**Parameters**
-
--   `node` **(AnnotatedNode | BaseNode | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))** 
--   `enter` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)?**  (optional, default `()=>{}`)
--   `leave` **[function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)?**  (optional, default `()=>{}`)
-
-#### flat_walker
-
-[src/ast.js:273-287](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L273-L287 "Source code on GitHub")
-
-Iterate over all nodes in a block without recursing into sub-nodes.
-
-**Parameters**
-
--   `nodes` **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;AnnotatedNode> | AnnotatedNode)** 
--   `cb` **function (AnnotatedNode, function (AnnotatedNode): [boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)): [boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
-
-#### call_visitors
-
-[src/ast.js:295-300](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L295-L300 "Source code on GitHub")
-
-Callback for each visitor key for a given node.
-
-**Parameters**
-
--   `node` **AnnotatedNode** 
--   `cb`  
-
-#### add_line
-
-[src/ast.js:308-326](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L308-L326 "Source code on GitHub")
-
-Add a new line to the source code.
-
-**Parameters**
-
--   `lineNumber` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** 0-based line number
--   `sourceLine` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The source line to add
-
-#### rename
-
-[src/ast.js:332-338](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L332-L338 "Source code on GitHub")
-
-**Parameters**
-
--   `inode` **(Identifier | AnnotatedNode)** A node of type Syntax.Identifier
--   `newName` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The new name of the identifier
-
-#### as_source
-
-[src/ast.js:344-362](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L344-L362 "Source code on GitHub")
-
-Return the AST nodes as source code, including any modifications made.
-
-Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The lossy source code
-
-#### get_from_function
-
-[src/ast.js:370-485](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/ast.js#L370-L485 "Source code on GitHub")
-
-**Parameters**
-
--   `node` **(FunctionDeclaration | FunctionExpression | MethodDefinition | ArrowFunctionExpression | Property | [Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling))** 
--   `whatToGet` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**  (optional, default `'all'`)
-
-Returns **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Node](https://developer.mozilla.org/docs/Web/API/Node/nextSibling)> | [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String) | CFGInfo)** 
-
-### 
-
-[src/utils.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/utils.js#L7-L7 "Source code on GitHub")
+[src/utils.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/utils.js#L7-L7 "Source code on GitHub")
 
 * * *
 
@@ -1209,9 +1211,13 @@ Returns **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/G
 -   **since**: 1.0.0
 -   **author**: Julian Jensen &lt;jjdanois@gmail.com>
 
+### pluginManager
+
+[src/utils.js:15-15](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/utils.js#L15-L15 "Source code on GitHub")
+
 ### 
 
-[src/plugins.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/9a24f35824918792f5377d4bd61c3dc54077d613/src/plugins.js#L7-L7 "Source code on GitHub")
+[src/plugins.js:7-7](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/plugins.js#L7-L7 "Source code on GitHub")
 
 Manage all the plugins.
 
@@ -1219,6 +1225,18 @@ Manage all the plugins.
 
 -   **since**: 1.0.0
 -   **author**: Julian Jensen &lt;jjdanois@gmail.com>
+
+### callback
+
+[src/plugins.js:122-137](https://github.com/julianjensen/ast-flow-graph/blob/8685895884687350f306970bd474f006281ad927/src/plugins.js#L122-L137 "Source code on GitHub")
+
+**Parameters**
+
+-   `topKey` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+-   `subKey` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)?** 
+-   `args` **...any** 
+
+Returns **any** 
 
 ## License
 

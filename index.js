@@ -6,10 +6,14 @@
  *********************************************************************************************************************/
 "use strict";
 
-require                        = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
-const CFG                      = require( './src/cfg' ).default;
-const { Block, Edge }          = require( './src/types' );
-const { load_plugins, plugin } = require( './src/utils' );
+require               = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
+const CFG             = require( './src/cfg' ).default;
+const { Block, Edge } = require( './src/types' );
+const {
+          load_plugins,
+          plugin,
+          current
+      }               = require( './src/utils' );
 
 let loaded = false;
 
@@ -24,7 +28,7 @@ function load( s, o )
     {
         loaded = true;
         load_plugins( o.plugins );
-        plugin( 'general', 'postload' );
+        plugin( 'general', 'postload', current );
     }
 
     return new CFG( s, o );
