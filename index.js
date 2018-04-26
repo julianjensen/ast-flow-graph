@@ -6,7 +6,7 @@
  *********************************************************************************************************************/
 "use strict";
 
-require               = require( '@std/esm' )( module, { esm: 'js', cjs: true, sourceMap: true } );
+require               = require( 'esm' )( module, { mode: 'auto' } );
 const CFG             = require( './src/cfg' ).default;
 const { Block, Edge } = require( './src/types' );
 const {
