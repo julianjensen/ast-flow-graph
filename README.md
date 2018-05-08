@@ -126,7 +126,7 @@ This section is a work in progress. The `headers`, `rows`, and `json` are not im
 -   `parse` called to parse the source code
 
 ## API
-<!--APIS>
+<!-- APIS -->
 ## Members
 
 <dl>
@@ -1063,7 +1063,7 @@ It's damn near impossible to make WebStorm understand a class hierarchy.
 | to | <code>number</code> | 
 | type | <code>EdgeInfo</code> | 
 
-<!--APIE>
+<!-- APIE -->
 
 ## License
 
