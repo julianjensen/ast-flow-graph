@@ -294,7 +294,7 @@ export default class AST
      * Callback for each visitor key for a given node.
      *
      * @param {AnnotatedNode} node
-     * @param {function(Array<AnnotatedNode>|AnnotatedNode)} cb
+     * @param {function((Array<AnnotatedNode>|AnnotatedNode))} cb
      */
     call_visitors( node, cb )
     {

@@ -22,16 +22,16 @@
 
 /**
  * @typedef {object} VisitorHelper
- * @property {BlockManager.} BlockManager
- * @property {BlockManager#} bm
+ * @property {BlockManager} BlockManager
+ * @property {BlockManager} bm
  * @property {AST} ast
  * @property {?CFGBlock} prev
  * @property {?CFGBlock} block
  * @property {function():CFGBlock} newBlock
- * @property {CFGBlock[]} toExit
+ * @property {Array<CFGBlock>} toExit
  * @property {function(CFGBlock,AnnotatedNode|Array<AnnotatedNode>,VisitorHelper):CFGBlock} [flatWalk]
  * @property {function(CFGBlock,AnnotatedNode,VisitorHelper):*} [scanWalk]
- * @property {CFGBlock[]} breakTargets
+ * @property {Array<CFGBlock>} breakTargets
  * @property {function(CFGBlock):*} addBreakTarget
  * @property {function(CFGBlock, CFGBlock):*} addLoopTarget
  * @property {function():*} popTarget
@@ -76,10 +76,10 @@
  * @property {Array<string>} edgeLabels    // was graph_label
  * @property {number} [start]
  * @property {number} [end]
- * @property {Array<[ number, number ]>} conditional
- * @property {Array<[ number, number ]>} unconditional
+ * @property {Array<Array<number>>} conditional         - Actually an array of a tuple length 2: [ number, number ]
+ * @property {Array<Array<number>>} unconditional  - Actually an array of a tuple length 2: [ number, number ]
  * @property {object} [dotOptions={}]
- * @property {CFGBlock[]} blocks
+ * @property {Array<CFGBlock>} blocks
  */
 
 /**
@@ -88,7 +88,7 @@
  * @property {Array<AnnotatedNode>|AnnotatedNode} body
  * @property {Array<AnnotatedNode>} [params]
  * @property {AnnotatedNode} node
- * @property {[ number, number ]} lines
+ * @property {Array<number>} lines         - A tuple with length 2
  */
 
 /**
@@ -107,5 +107,12 @@
  * @property {?AnnotatedNode} switchTest
  * @property {AnnotatedNode} consequent
  * @private
+ */
+
+/**
+ * @typedef {object} Connection
+ * @property {number} from
+ * @property {number} to
+ * @property {EdgeInfo} type
  */
 

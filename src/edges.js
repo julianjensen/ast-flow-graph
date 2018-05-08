@@ -175,7 +175,7 @@ export default class Edges
     /**
      * @param {CFGBlock|number} from
      * @param {CFGBlock|number} to
-     * @param {(CFGBlock|number)[]} newTargets
+     * @param {Array<CFGBlock|number>} newTargets
      * @return {Edges}
      * @private
      */
@@ -261,7 +261,7 @@ export default class Edges
      * Get all successors for a given {@link CFGBlock}.
      *
      * @param {CFGBlock|number} from
-     * @return {CFGBlock[]}
+     * @return {Array<CFGBlock>}
      */
     get_succs( from )
     {
@@ -276,7 +276,7 @@ export default class Edges
      * Get all predecessors for a given {@link CFGBlock}
      *
      * @param {CFGBlock|number} from
-     * @return {CFGBlock[]}
+     * @return {Array<CFGBlock>}
      */
     get_preds( from )
     {
@@ -324,7 +324,7 @@ export default class Edges
      * @param {CFGBlock|number} to
      * @param {CFGBlock|number} from1
      * @param {CFGBlock|number} to1
-     * @return {Edges=}
+     * @return {?Edges}
      * @private
      */
     _relabel( from, to, from1, to1 )
@@ -370,7 +370,7 @@ export default class Edges
      * Get edge information for a given {@link CFGBlock}, i.e. successors.
      *
      * @param {CFGBlock|number} from
-     * @return {*|{}|Uint8Array|{from: *, to: *, type: V | undefined}[]|Int32Array|Uint16Array}
+     * @return {Array<Connection>}
      */
     edges( from )
     {
@@ -396,7 +396,7 @@ export default class Edges
      * Get all predecessor edge information for a given {@link CFGBlock}.
      *
      * @param {CFGBlock|number} _from
-     * @return {*|{}|Uint8Array|{from: *, to: *, type: V | undefined}[]|Int32Array|Uint16Array}
+     * @return {Array<Connection>}
      */
     pred_edges( _from )
     {

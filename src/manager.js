@@ -127,7 +127,7 @@ export default class BlockManager
     }
 
     /**
-     * @return {Array<string>[]}
+     * @return {Array<string>}
      */
     toTable()
     {

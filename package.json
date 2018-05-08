@@ -18,7 +18,12 @@
         "changelog": "npx auto-changelog -p -l 10 && git add CHANGELOG.md",
         "marktoc": "npx replace -s -q '### Changelog' '<!-- START doctoc -->\\\n<!-- END doctoc -->' CHANGELOG.md",
         "toc": "npx doctoc --github --title \"### Changelog\" CHANGELOG.md",
-        "docs": "npx documentation readme index.js --infer-private='^_.*'  -s API --github",
+
+        "api": "node -e \"const x='README',{readFileSync:_r,writeFileSync:w}=require('fs'),r=f=>_r(f+'.md','utf8'),s=r(x),t='<!--APIS>\\n'+r('tmp')+'<!--APIE>';w(x+'.md',s.replace(/<!--APIS>[\\s\\S]*<!--APIE>/,t))\"",
+        "gendocs": "npx jsdoc-to-markdown src/*.js > tmp.md",
+        "rmdocs": "rimraf tmp.md",
+        "docs": "run-s -s gendocs api rmdocs",
+
         "docsite": "npx documentation build index.js --infer-private='^_.*'  -f html -o docs",
         "version": "run-s -s changelog marktoc toc docs",
         "gkupdate": "greenkeeper-lockfile-update",
