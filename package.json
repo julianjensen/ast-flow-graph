@@ -8,8 +8,8 @@
         "lint": "eslint index.js lib/**/*.js src/**/*.js",
         "check": "npm run lint -s && dependency-check package.json --entry index.js",
         "test": "rm -rf node_modules/.cache coverage/ && nyc --reporter=lcov --reporter=text --produce-source-map --require=esm mocha",
-        "coveralls": "npm test && nyc report --reporter=text-lcov | npx coveralls",
-        "postcoveralls": "rimraf ./coverage",
+        "coveralls": "npm test && nyc report --reporter=text-lcov | tee coverage.lcov | npx coveralls",
+        "postcoveralls": "codecov && rimraf ./coverage coverage.lcov",
         "prepublish": "npm test",
         "patch": "npm version patch && npm publish",
         "minor": "npm version minor && npm publish",
@@ -20,7 +20,9 @@
         "toc": "npx doctoc --github --title \"### Changelog\" CHANGELOG.md",
         "docs": "npx documentation readme index.js --infer-private='^_.*'  -s API --github",
         "docsite": "npx documentation build index.js --infer-private='^_.*'  -f html -o docs",
-        "version": "run-s -s changelog marktoc toc docs"
+        "version": "run-s -s changelog marktoc toc docs",
+        "gkupdate": "greenkeeper-lockfile-update",
+        "gkupload": "greenkeeper-lockfile-upload"
     },
     "repository": {
         "types": "git",
@@ -40,12 +42,14 @@
     "homepage": "https://github.com/julianjensen/ast-flow-graph#readme",
     "devDependencies": {
         "@types/esprima": "^4.0.1",
-        "@types/estree": "^0.0.38",
+        "@types/estree": "^0.0.39",
         "chai": "^4.1.1",
+        "codecov": "^3.0.1",
         "dependency-check": "^3.1.0",
         "dtsmake": "^0.0.10",
         "eslint": "^4.19.1",
-        "mocha": "^4.1.0",
+        "greenkeeper-lockfile": "^1.15.0",
+        "mocha": "^5.1.1",
         "npm-run-all": "^4.1.2",
         "nyc": "^11.7.1",
         "tern": "^0.21.0"
@@ -54,7 +58,7 @@
         "chalk": "^2.4.1",
         "cli-table2": "^0.2.0",
         "command-line-args": "^5.0.0",
-        "command-line-usage": "^4.1.0",
+        "command-line-usage": "^5.0.5",
         "dominators": "^1.1.1",
         "escope": "^3.6.0",
         "esm": "^3.0.26",
