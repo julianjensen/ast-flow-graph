@@ -1,7 +1,7 @@
 # ast-flow-graph
 
 [![Greenkeeper badge](https://badges.greenkeeper.io/julianjensen/ast-flow-graph.svg)](https://greenkeeper.io/)
-
+[![codecov](https://codecov.io/gh/julianjensen/ast-flow-graph/branch/master/graph/badge.svg)](https://codecov.io/gh/julianjensen/ast-flow-graph)
 [![Coveralls Status][coveralls-image]][coveralls-url]
 [![Build Status][travis-image]][travis-url]
 [![Dependency Status][depstat-image]][depstat-url]
