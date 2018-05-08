@@ -1,5 +1,8 @@
 language: node_js
 node_js:
   - stable
+before_script:
+  - npm run gkupdate
 after_script:
   - npm run coveralls
+  - npm run gkupload
