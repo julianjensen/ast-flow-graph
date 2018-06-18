@@ -7,7 +7,7 @@
 "use strict";
 
 const
-    Table              = require( 'cli-table2' ),
+    Table              = require( 'cli-table3' ),
     chalk              = require( 'chalk' ),
     string             = s => typeof s === 'string',
     { isArray: array } = Array,
