@@ -65,7 +65,7 @@
         "dominators": "^1.1.1",
         "escope": "^3.6.0",
         "esm": "^3.0.26",
-        "espree": "^3.5.4",
+        "espree": "^4.0.0",
         "estraverse": "^4.2.0",
         "traversals": "^1.0.15",
         "yallist": "^3.0.2"
