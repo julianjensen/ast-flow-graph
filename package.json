@@ -64,7 +64,7 @@
         "command-line-usage": "^5.0.5",
         "dominators": "^1.1.1",
         "escope": "^3.6.0",
-        "esm": "^3.0.26",
+        "esm": "^3.1.0",
         "espree": "^3.5.4",
         "estraverse": "^4.2.0",
         "traversals": "^1.0.15",
