@@ -34,5 +34,8 @@ function load( s, o )
     return new CFG( s, o );
 }
 
-module.exports = { CFG: load, Block, Edge };
+load.Block = Block;
+load.Edge = Edge;
+
+module.exports = load;
 
