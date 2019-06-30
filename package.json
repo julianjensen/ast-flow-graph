@@ -61,7 +61,7 @@
         "chalk": "^2.4.1",
         "cli-table3": "^0.5.0",
         "command-line-args": "^5.0.0",
-        "command-line-usage": "^5.0.5",
+        "command-line-usage": "^6.0.0",
         "dominators": "^1.1.1",
         "escope": "^3.6.0",
         "esm": "^3.2.0",
