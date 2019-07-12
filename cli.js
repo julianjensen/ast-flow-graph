@@ -6,17 +6,16 @@
  *********************************************************************************************************************/
 "use strict";
 
-import CFG           from './src/cfg';
-import path          from 'path';
-import { promisify } from 'util';
-import fs            from 'fs';
-import cli           from 'command-line-args';
-import usage         from 'command-line-usage';
+import CFG              from './src/cfg';
+import path             from 'path';
+import fs               from 'fs';
+import cli              from 'command-line-args';
+import usage            from 'command-line-usage';
+import { load_plugins } from "./src/utils";
 
 const
     version    = require( path.join( __dirname, 'package.json' ) ).version,
-    stat       = promisify( fs.stat ),
-    writeFile  = promisify( fs.writeFile ),
+    { stat, writeFile } = fs.promises,
     stdin      = process.stdin,
     argumentos = [
         {
@@ -92,13 +91,7 @@ const
             header: 'Description', content: "Creates a CFG from one or more source files."
         }
     ],
-    args       = cli( argumentos ),
-    extract = bm => bm.blocks.map( b => ( {
-        id:        b.id,
-        nodes:     b.nodes.map( n => n.type ),
-        types:     b.types,
-        createdBy: b.createdBy
-    } ) );
+    args       = cli( argumentos );
 
 if ( args.help )
 {
@@ -114,9 +107,12 @@ if ( !args.source && args.name && args.name.some( n => n.endsWith( '.js' ) ) )
 
 process_all();
 
+/** */
 function process_all()
 {
     let str = '';
+
+    load_plugins();
 
     if ( args.source && args.source.length )
         args.source.forEach( async name => await process_file( fs.readFileSync( name, 'utf8' ) ) );
@@ -133,6 +129,9 @@ function process_all()
 
 }
 
+/**
+ * @param {string} source
+ */
 function process_file( source )
 {
     const
@@ -145,13 +144,17 @@ function process_file( source )
         cfg.generate();
         cfg.forEach( async c => await single_function( cfg, c.name, false ) );
     }
-
-    // fs.writeFileSync( './test/table6.txt', cfg.toTable() );
-    // fs.writeFileSync( './test/text6.txt', `${cfg}` );
 }
 
+/**
+ * @param {CFG} cfg
+ * @param {string} name
+ * @param {boolean} generate
+ * @return {Promise<void>}
+ */
 async function single_function( cfg, name, generate )
 {
+    // eslint-disable-next-line max-len
     let hdr = `------------------------------------------------------------------------------------------------------------\nNEW FUNCTION: __FN__\n------------------------------------------------------------------------------------------------------------`;
 
     const c = generate ? cfg.generate( name ) : cfg.by_name( name );
@@ -181,6 +184,4 @@ async function single_function( cfg, name, generate )
         else
             console.log( `${dot}\n\n` );
     }
-
-    // console.log( extract( cfg.by_name( 'code_coverage' ).bm ) );
 }

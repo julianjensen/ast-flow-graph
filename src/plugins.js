@@ -20,8 +20,12 @@ const
     dout               = ( ...args ) => debugTrack && process.stdout.write( format( ...args ) ),
     dlog               = ( ...args ) => debugTrack && console.log( ...args );
 
+/** */
 export default class PluginManager
 {
+    /**
+     * @param {Array<string>} pluginList
+     */
     constructor( pluginList )
     {
         this.pluginList   = pluginList;
@@ -66,6 +70,10 @@ export default class PluginManager
         this.allFunctions = [];
     }
 
+    /**
+     * @param {string} moduleName
+     * @static
+     */
     static load_module( moduleName )
     {
         try
@@ -82,6 +90,7 @@ export default class PluginManager
         }
     }
 
+    /** */
     load_plugins()
     {
         const

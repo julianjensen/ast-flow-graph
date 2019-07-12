@@ -60,6 +60,12 @@ function _as_table( hdr, headers, rows )
     return output;
 }
 
+/**
+ * @param {string|string[]|string[][]} hdr
+ * @param {string[]|string[][]} [headers]
+ * @param {string[][]} [rows]
+ * @return {string}
+ */
 export function str_table( hdr, headers, rows )
 {
     return _as_table( hdr, headers, rows ).toString();

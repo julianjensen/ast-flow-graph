@@ -242,8 +242,11 @@
             "always"
         ],
         "space-before-function-paren": [
-            2,
-            "never"
+            "error",
+            {
+                "anonymous": "never",
+                "named": "never"
+            }
         ],
         "space-in-parens": [
             2,

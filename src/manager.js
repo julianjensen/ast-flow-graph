@@ -243,10 +243,7 @@ export default class BlockManager
 
                 if ( !succ || succ.isa( Block.START ) || succ.isa( Block.EXIT ) ) return;
 
-                if ( block.isEmpty() )
-                {
-                    if ( block.eliminate() ) changed = true;
-                }
+                if ( block.isEmpty() && block.eliminate() ) changed = true;
 
                 if ( !block.isa( Block.DELETED ) && !succ.isa( Block.DELETED ) && succ.preds.length === 1 )
                 {

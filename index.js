@@ -6,7 +6,7 @@
  *********************************************************************************************************************/
 "use strict";
 
-require               = require( 'esm' )( module, { mode: 'auto' } );
+require               = require( 'esm' )( module, { mode: 'auto' } );   // eslint-disable-line no-native-reassign
 const CFG             = require( './src/cfg' ).default;
 const { Block, Edge } = require( './src/types' );
 const {

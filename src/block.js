@@ -16,7 +16,6 @@ const
         MAX_EDGES,
         LEFT_EDGES,
         RIGHT_EDGES,
-        AST_NODES,
         TRUE_EDGE,
         FALSE_EDGE,
         START_NODE,
@@ -175,9 +174,7 @@ export default class CFGBlock
     as( nodeType )
     {
         if ( nodeType & Block.EXCLUSIVE )
-        {
             this.types = ( this.types & ~Block.EXCLUSIVE ) | ( nodeType & Block.EXCLUSIVE );
-        }
 
         this.types |= ( nodeType & ~Block.EXCLUSIVE );
 
@@ -285,7 +282,7 @@ export default class CFGBlock
      */
     by( txt )
     {
-        this.createdBy = txt;
+        this.createdBy = typeof txt === 'string' ? txt : 'label';
         return this;
     }
 
@@ -369,12 +366,7 @@ export default class CFGBlock
                      }
             } = l.loc;
 
-        if ( start === end )
-        {
-            return `:${start}`;
-        }
-
-        return `:${start}-${end}`;
+        return start === end ? `:${start}` : `:${start}-${end}`;
     }
 
     /**
@@ -396,7 +388,7 @@ export default class CFGBlock
     /**
      * @param {Array<*>} arr
      * @param {number} chunkSize
-     * @return {ArrayArray<string>}
+     * @return {Array<string>}
      */
     split_by( arr, chunkSize )
     {

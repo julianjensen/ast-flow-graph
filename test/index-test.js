@@ -150,7 +150,7 @@ const
                 id:        4,
                 nodes:     [ 'ContinueStatement' ],
                 types:     16,
-                createdBy: 4096
+                createdBy: 'label'
             },
             {
                 id:        5,
