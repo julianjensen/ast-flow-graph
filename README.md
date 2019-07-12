@@ -165,7 +165,7 @@ dot -Tpng tmp-04.dot
 
 which produces something the image below (I scaled it down for size reasons):
 
-![cfg-04.dot](./tmp-04.png)
+![cfg-04.dot](./cfg-04.png)
 
 Finally, note that the `.dot` file is simple text, so you can edit the labels, colors, and whatnot if you care or need to do so.
 
