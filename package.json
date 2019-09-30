@@ -67,7 +67,7 @@
         "espree": "^6.0.0",
         "estraverse": "^4.2.0",
         "traversals": "^1.0.15",
-        "yallist": "^3.0.3"
+        "yallist": "^4.0.0"
     },
     "esm": {
         "mode": "auto"
