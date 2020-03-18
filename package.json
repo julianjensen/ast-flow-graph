@@ -47,7 +47,7 @@
     "homepage": "https://github.com/julianjensen/ast-flow-graph#readme",
     "devDependencies": {
         "@types/esprima": "^4.0.2",
-        "@types/estree": "^0.0.39",
+        "@types/estree": "^0.0.43",
         "chai": "^4.2.0",
         "codecov": "^3.5.0",
         "eslint": "^6.0.1",
