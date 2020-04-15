@@ -65,7 +65,7 @@
         "escope": "^3.6.0",
         "esm": "^3.2.25",
         "espree": "^6.0.0",
-        "estraverse": "^4.2.0",
+        "estraverse": "^5.1.0",
         "traversals": "^1.0.15",
         "yallist": "^3.0.3"
     },
