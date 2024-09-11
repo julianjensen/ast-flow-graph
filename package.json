@@ -62,9 +62,9 @@
         "command-line-args": "^5.1.1",
         "command-line-usage": "^6.0.2",
         "dominators": "^1.1.2",
-        "escope": "^3.6.0",
+        "escope": "^4.0.0",
         "esm": "^3.2.25",
-        "espree": "^6.0.0",
+        "espree": "^6.2.1",
         "estraverse": "^4.2.0",
         "traversals": "^1.0.15",
         "yallist": "^3.0.3"
